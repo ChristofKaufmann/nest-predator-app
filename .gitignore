@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Images saved with docker save
+*.tar
+*.tar.gz
+
+# Streamlit secrets (not used by the app, but never to be committed)
+.streamlit/secrets.toml
+
+# KDE folder settings
+.directory
+
+# The model isn't part of the repository, see README.md
+model/*
+!model/README.md

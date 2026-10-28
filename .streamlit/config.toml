@@ -1,0 +1,12 @@
+[client]
+# no deploy button and no developer menu; the menu disappears completely as there are no other entries
+toolbarMode = "minimal"
+
+[server]
+headless = true
+# Reloading changed modules would give the app script a new `analysis` module while the upload route keeps the old
+# one, so uploads would no longer find their session. Restart the server after code changes instead.
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false

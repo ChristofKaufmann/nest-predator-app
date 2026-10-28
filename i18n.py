@@ -1,0 +1,249 @@
+"""Texts of the user interface in German and English.
+
+The language follows the browser and can be switched in the sidebar. The choice is kept in the URL (?lang=en), so it
+survives reloading the page. Texts with a count are pairs of singular and plural form.
+"""
+
+import streamlit as st
+
+LANGUAGES = {"de": "Deutsch", "en": "English"}
+DEFAULT_LANGUAGE = "en"  # for browsers in any other language
+
+TEXTS = {
+    "de": {
+        "title": "Prädatoren-Erkennung",
+        "language": "Sprache · Language",
+        "loading_model": "Lade Modell …",
+        "model_error": "Das Modell konnte nicht geladen werden: {error}",
+        "threshold": "Konfidenzschwelle",
+        "threshold_help": "Nur Erkennungen ab dieser Konfidenz werden angezeigt, gezählt und exportiert.",
+        "classes": "Klassen",
+        "all_classes": "Alle Klassen",
+        "start_over": "Neu beginnen",
+        "start_over_help": "Alle Ergebnisse verwerfen, z. B. für eine neue Serie von Bildern.",
+        "quit": "Beenden",
+        "quit_help": "Das Programm beenden. Danach kann das Browserfenster geschlossen werden.",
+        "model_info": "Modell mit {classes} Klassen · DarkHelp {darkhelp} · Darknet {darknet}",
+        "quit_title": "Programm beenden?",
+        "quit_uploading": "Es werden gerade noch Bilder ausgewertet.",
+        "quit_results": "Die Ergebnisse gehen dabei verloren. Lade sie vorher mit „{excel}“ herunter, wenn du sie "
+                        "behalten möchtest.",
+        "cancel": "Abbrechen",
+        "ended_title": "Prädatoren-Erkennung wurde beendet",
+        "ended_text": "Du kannst dieses Fenster jetzt schließen. Zum Weiterarbeiten das Programm neu starten.",
+        "empty_hint": "Ziehe einzelne Bilder, ganze Ordner oder den Inhalt einer SD-Karte in das Feld oben. Die "
+                      "Auswertung startet automatisch.",
+        "metric_images": "Bilder ausgewertet",
+        "metric_with_detection": "Bilder mit Erkennung",
+        "metric_detections": "Erkennungen",
+        "metric_unreadable": "Nicht lesbar",
+        "metric_duration": "Mittlere Verarbeitungszeit",
+        "metric_duration_help": "Pro Bild für Einlesen, Erkennung und Vorschau, ohne die Übertragung.",
+        "excel": "Excel herunterladen",
+        "excel_file": "erkennungen.xlsx",
+        "sheet_detections": "Erkennungen",
+        "sheet_classes": "Pro Klasse",
+        "sheet_images": "Bilder",
+        "tab_gallery": "Galerie",
+        "tab_statistics": "Statistik",
+        "only_hits": "Nur Bilder mit Erkennungen",
+        "no_images": "Keine Bilder für die aktuelle Auswahl.",
+        "more_images": "Weitere Bilder anzeigen (noch {count})",
+        "date_format": "%d.%m.%Y %H:%M",
+        "unreadable_title": "Nicht lesbare Dateien",
+        "error_unreadable": "Kein lesbares Bild",
+        "classes_title": "Bilder pro Klasse",
+        "without_detection_count": ["Ohne Erkennung: **{count} von {total} Bild**",
+                                    "Ohne Erkennung: **{count} von {total} Bildern**"],
+        "classes_caption": "Bilder: Anzahl der Bilder, auf denen die Klasse erkannt wurde. Erkennungen: einzelne "
+                           "Erkennungen, ein Bild mit zwei Füchsen zählt doppelt. Beides und „ohne Erkennung“ "
+                           "richten sich nach Konfidenzschwelle und Klassenauswahl.",
+        "confidence_title": "Konfidenz der Erkennungen",
+        "confidence_caption": "Alle Erkennungen ab {minimum} Konfidenz. Als erkannt zählen sie erst ab der Schwelle, "
+                              "eine Konfidenz genau auf der Schwelle zählt mit.",
+        "detected": "erkannt",
+        "not_detected": "nicht erkannt",
+        "threshold_label": "Schwelle {value}",
+        "from": "von",
+        "to": "bis",
+        "hour_title": "Tageszeit der Bilder",
+        "hour_axis": "Uhrzeit (Stunde)",
+        "with_detection": "mit Erkennung",
+        "without_detection": "ohne Erkennung",
+        "hour_caption": ["Aus den Aufnahmezeiten in den Bilddateien ({count} von {total} Bild hat eine). „Mit "
+                         "Erkennung“ richtet sich nach Konfidenzschwelle und Klassenauswahl.",
+                         "Aus den Aufnahmezeiten in den Bilddateien ({count} von {total} Bildern haben eine). „Mit "
+                         "Erkennung“ richtet sich nach Konfidenzschwelle und Klassenauswahl."],
+        "col_file": "Datei",
+        "col_taken": "Aufnahmezeit",
+        "col_class": "Klasse",
+        "col_confidence": "Konfidenz",
+        "col_max_confidence": "Höchste Konfidenz",
+        "col_status": "Status",
+        "col_images": "Bilder",
+        "col_detections": "Erkennungen",
+        "col_detected_classes": "Erkannte Klassen",
+        "col_duration": "Verarbeitungszeit (ms)",
+        "col_error": "Fehler",
+        "col_hour": "Stunde",
+        "col_detection": "Erkennung",
+        "upload": {
+            "locale": "de-DE",
+            "title": "Bilder oder Ordner hierher ziehen",
+            "hint": "Zum Beispiel den ganzen Inhalt der SD-Karte. Videos und andere Dateien werden übersprungen.",
+            "pickFiles": "Bilder auswählen",
+            "pickFolder": "Ordner auswählen",
+            "cancel": "Abbrechen",
+            "searching": "Dateien werden gesucht …",
+            "progress": ["{done} von {total} Bild ausgewertet", "{done} von {total} Bildern ausgewertet"],
+            "remainingSeconds": " · noch ca. {count} s",
+            "remainingMinutes": " · noch ca. {count} min",
+            "cancelled": ["Abgebrochen nach {done} von {total} Bild.", "Abgebrochen nach {done} von {total} Bildern."],
+            "noNew": "Keine neuen Bilder.",
+            "done": ["Fertig: {count} Bild ausgewertet.", "Fertig: {count} Bilder ausgewertet."],
+            "skipped": ["{count} andere Datei (z. B. Videos) übersprungen",
+                        "{count} andere Dateien (z. B. Videos) übersprungen"],
+            "duplicates": ["{count} bereits ausgewertetes Bild übersprungen",
+                           "{count} bereits ausgewertete Bilder übersprungen"],
+            "failed": ["{count} Datei konnte nicht hochgeladen werden:",
+                       "{count} Dateien konnten nicht hochgeladen werden:"],
+            "folderError": "Ordner konnte nicht gelesen werden: {error}",
+            "errors": {
+                "session_expired": "Sitzung abgelaufen, bitte die Seite neu laden.",
+                "file_too_large": "Datei zu groß",
+                "bad_request": "Ungültige Anfrage",
+            },
+        },
+    },
+    "en": {
+        "title": "Predator Detection",
+        "language": "Sprache · Language",
+        "loading_model": "Loading model …",
+        "model_error": "The model could not be loaded: {error}",
+        "threshold": "Confidence threshold",
+        "threshold_help": "Only detections from this confidence on are shown, counted and exported.",
+        "classes": "Classes",
+        "all_classes": "All classes",
+        "start_over": "Start over",
+        "start_over_help": "Discard all results, e.g. for a new series of images.",
+        "quit": "Quit",
+        "quit_help": "Quit the program. Afterwards the browser window can be closed.",
+        "model_info": "Model with {classes} classes · DarkHelp {darkhelp} · Darknet {darknet}",
+        "quit_title": "Quit the program?",
+        "quit_uploading": "Images are still being analysed.",
+        "quit_results": "The results will be lost. Download them first with “{excel}” if you want to keep them.",
+        "cancel": "Cancel",
+        "ended_title": "Predator Detection has been closed",
+        "ended_text": "You can close this window now. To continue working, start the program again.",
+        "empty_hint": "Drag single images, whole folders or the content of an SD card into the field above. The "
+                      "analysis starts automatically.",
+        "metric_images": "Images analysed",
+        "metric_with_detection": "Images with detection",
+        "metric_detections": "Detections",
+        "metric_unreadable": "Unreadable",
+        "metric_duration": "Mean processing time",
+        "metric_duration_help": "Per image for reading, detection and preview, without the upload.",
+        "excel": "Download Excel",
+        "excel_file": "detections.xlsx",
+        "sheet_detections": "Detections",
+        "sheet_classes": "Per class",
+        "sheet_images": "Images",
+        "tab_gallery": "Gallery",
+        "tab_statistics": "Statistics",
+        "only_hits": "Only images with detections",
+        "no_images": "No images for the current selection.",
+        "more_images": "Show more images ({count} left)",
+        "date_format": "%Y-%m-%d %H:%M",
+        "unreadable_title": "Unreadable files",
+        "error_unreadable": "Not a readable image",
+        "classes_title": "Images per class",
+        "without_detection_count": ["Without detection: **{count} of {total} image**",
+                                    "Without detection: **{count} of {total} images**"],
+        "classes_caption": "Images: number of images in which the class was detected. Detections: single "
+                           "detections, an image with two foxes counts twice. Both and “without detection” depend on "
+                           "the confidence threshold and the selected classes.",
+        "confidence_title": "Confidence of the detections",
+        "confidence_caption": "All detections from {minimum} confidence on. They only count as detected from the "
+                              "threshold on, a confidence exactly at the threshold counts.",
+        "detected": "detected",
+        "not_detected": "not detected",
+        "threshold_label": "Threshold {value}",
+        "from": "from",
+        "to": "to",
+        "hour_title": "Time of day",
+        "hour_axis": "Time of day (hour)",
+        "with_detection": "with detection",
+        "without_detection": "without detection",
+        "hour_caption": ["From the capture times in the image files ({count} of {total} image has one). “With "
+                         "detection” depends on the confidence threshold and the selected classes.",
+                         "From the capture times in the image files ({count} of {total} images have one). “With "
+                         "detection” depends on the confidence threshold and the selected classes."],
+        "col_file": "File",
+        "col_taken": "Taken",
+        "col_class": "Class",
+        "col_confidence": "Confidence",
+        "col_max_confidence": "Highest confidence",
+        "col_status": "Status",
+        "col_images": "Images",
+        "col_detections": "Detections",
+        "col_detected_classes": "Detected classes",
+        "col_duration": "Processing time (ms)",
+        "col_error": "Error",
+        "col_hour": "Hour",
+        "col_detection": "Detection",
+        "upload": {
+            "locale": "en-GB",
+            "title": "Drag images or folders here",
+            "hint": "For example the whole content of the SD card. Videos and other files are skipped.",
+            "pickFiles": "Select images",
+            "pickFolder": "Select folder",
+            "cancel": "Cancel",
+            "searching": "Looking for files …",
+            "progress": ["{done} of {total} image analysed", "{done} of {total} images analysed"],
+            "remainingSeconds": " · about {count} s left",
+            "remainingMinutes": " · about {count} min left",
+            "cancelled": ["Cancelled after {done} of {total} image.", "Cancelled after {done} of {total} images."],
+            "noNew": "No new images.",
+            "done": ["Done: {count} image analysed.", "Done: {count} images analysed."],
+            "skipped": ["{count} other file (e.g. videos) skipped", "{count} other files (e.g. videos) skipped"],
+            "duplicates": ["{count} already analysed image skipped", "{count} already analysed images skipped"],
+            "failed": ["{count} file could not be uploaded:", "{count} files could not be uploaded:"],
+            "folderError": "The folder could not be read: {error}",
+            "errors": {
+                "session_expired": "Session expired, please reload the page.",
+                "file_too_large": "File too large",
+                "bad_request": "Invalid request",
+            },
+        },
+    },
+}
+
+
+def init_language() -> None:
+    """Choose the language once per session: from the URL, else from the browser, else the default."""
+    if "language" not in st.session_state:
+        requested = st.query_params.get("lang") or (st.context.locale or "")[:2]
+        st.session_state.language = requested if requested in LANGUAGES else DEFAULT_LANGUAGE
+
+
+def language_selector() -> None:
+    st.sidebar.segmented_control(TEXTS[st.session_state.language]["language"], list(LANGUAGES),
+                                 format_func=LANGUAGES.get, key="language", required=True)
+    st.query_params["lang"] = st.session_state.language
+
+
+def t(key: str, n: int | None = None, **values) -> str:
+    """The text in the current language. For texts with singular and plural, n is the count that decides."""
+    text = TEXTS[st.session_state.language][key]
+    if isinstance(text, list):
+        text = text[0 if n == 1 else 1]
+    return text.format(**values)
+
+
+def upload_texts() -> dict:
+    return TEXTS[st.session_state.language]["upload"]
+
+
+def number(value: int) -> str:
+    """A count with thousands separator."""
+    return f"{value:,}".replace(",", "." if st.session_state.language == "de" else ",")

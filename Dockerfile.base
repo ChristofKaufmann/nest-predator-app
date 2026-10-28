@@ -1,0 +1,123 @@
+# Base image: builds a minimal OpenCV, Darknet and DarkHelp from source and adds Python with the packages of the app.
+# The app image (Dockerfile) builds on it. Build and push a new version after changes here or in requirements.txt:
+#
+#   docker build -f Dockerfile.base -t quay.io/christofkaufmann/nest-predator-base:0.1 .
+#   docker push quay.io/christofkaufmann/nest-predator-base:0.1
+
+ARG UBUNTU_VERSION=26.04
+ARG OPENCV_VERSION=4.10.0
+# Commits of Darknet (https://codeberg.org/CCodeRun/darknet) and DarkHelp (https://github.com/stephanecharette/DarkHelp)
+ARG DARKNET_REF=f684e1d75d4594298c8e73acc727ba6cf2e81c60
+ARG DARKHELP_REF=92288091463dcc126b31309b7ea1aa4a7fcf69c5
+
+FROM docker.io/library/ubuntu:${UBUNTU_VERSION} AS build
+
+ARG OPENCV_VERSION
+ARG DARKNET_REF
+ARG DARKHELP_REF
+# Darknet compiles with -march=native, which ties the binaries to the CPU of the build machine. x86-64-v3 (AVX2) runs on
+# most x86 CPUs since ~2015 and matches the -mavx2 that Darknet enables anyway. Use "native" for a machine-specific build.
+ARG DARKNET_MARCH=x86-64-v3
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential ca-certificates cmake file git \
+        libjpeg-dev libpng-dev zlib1g-dev \
+        libopenblas64-0 libopenblas64-openmp-dev libprotobuf-dev protobuf-compiler \
+        libmagic-dev libtclap-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+
+# Ubuntu's OpenCV packages pull in Qt, Mesa/LLVM, GDAL and ffmpeg (~680 MB). Darknet and DarkHelp only need the modules
+# below (dnn for DarkHelp's optional OpenCV driver, video for cv::KalmanFilter), without GUI and video backends.
+# Like Ubuntu, dnn uses the system protobuf instead of a bundled copy that could clash with Darknet's ONNX export tool.
+RUN git clone --depth 1 --branch ${OPENCV_VERSION} https://github.com/opencv/opencv.git \
+    && cmake -S opencv -B opencv/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DBUILD_LIST=core,imgproc,imgcodecs,videoio,highgui,video,dnn \
+        -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_DOCS=OFF -DBUILD_opencv_apps=OFF \
+        -DBUILD_JAVA=OFF -DBUILD_opencv_python3=OFF -DOPENCV_GENERATE_PKGCONFIG=OFF \
+        -DWITH_GTK=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_FFMPEG=OFF -DWITH_GSTREAMER=OFF -DWITH_V4L=OFF \
+        -DWITH_1394=OFF -DWITH_OBSENSOR=OFF -DWITH_GDAL=OFF -DWITH_GDCM=OFF -DWITH_TIFF=OFF -DWITH_WEBP=OFF \
+        -DWITH_OPENJPEG=OFF -DWITH_JASPER=OFF -DWITH_OPENEXR=OFF -DWITH_AVIF=OFF \
+        -DWITH_JPEG=ON -DBUILD_JPEG=OFF -DWITH_PNG=ON -DBUILD_PNG=OFF -DBUILD_ZLIB=OFF \
+        -DWITH_PROTOBUF=ON -DBUILD_PROTOBUF=OFF -DPROTOBUF_UPDATE_FILES=ON \
+        -DWITH_OPENCL=OFF -DWITH_IPP=OFF -DWITH_LAPACK=OFF -DWITH_EIGEN=OFF -DWITH_ITT=OFF -DWITH_ADE=OFF \
+        -DWITH_VA=OFF -DWITH_VA_INTEL=OFF -DWITH_CUDA=OFF \
+    && make -C opencv/build -j"$(nproc)" install
+
+# A blobless clone keeps all commits and tags, which Darknet needs for its version number. Its CMake config runs
+# "git describe" in the current directory, so cmake has to be started from within the repository.
+# Darknet is installed twice: into the build image for DarkHelp, and into /stage for the runtime image.
+# Darknet relies on the full OpenCV headers to pull in <math.h> (unqualified isnan/isinf in blas.cpp, yolo_layer.cpp)
+# and <cstdarg> (va_start in utils.cpp). The minimal OpenCV doesn't, so add both to Darknet's central header.
+RUN git clone --filter=blob:none https://codeberg.org/CCodeRun/darknet.git \
+    && git -C darknet checkout ${DARKNET_REF} \
+    && sed -i -e "s/-march=native/-march=${DARKNET_MARCH}/" -e "s/-mtune=native/-mtune=generic/" darknet/CM_source.cmake \
+    && sed -i "s/^#include <cmath>$/#include <cmath>\n#include <cstdarg>\n#include <math.h>/" darknet/src-lib/darknet_internal.hpp \
+    && mkdir darknet/build && cd darknet/build \
+    && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr .. \
+    && make -j"$(nproc)" install \
+    && make install DESTDIR=/stage
+
+# DarkHelp.py loads /usr/lib/libdarkhelp.so, hence the /usr prefix. Like Darknet, DarkHelp gets some standard headers
+# only through the full OpenCV headers, so add them to its central header and to one tool that doesn't include it.
+RUN git clone --filter=blob:none https://github.com/stephanecharette/DarkHelp.git \
+    && git -C DarkHelp checkout ${DARKHELP_REF} \
+    && sed -i "s/^#include <list>$/#include <list>\n#include <deque>\n#include <iostream>\n#include <set>/" DarkHelp/src-lib/DarkHelp.hpp \
+    && sed -i "1i #include <iostream>" DarkHelp/src-apps/resize_corners.cpp \
+    && mkdir DarkHelp/build && cd DarkHelp/build \
+    && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr .. \
+    && make -j"$(nproc)" install DESTDIR=/stage
+
+# Runtime files only: libraries and tools, no headers or CMake configs. The Python bindings of DarkHelp go where
+# Debian packages put Python modules, so they always match the library. The license texts go with the binaries.
+RUN mkdir -p /stage/usr/local/lib /stage/usr/lib/python3/dist-packages \
+    && cp -a /usr/local/lib/libopencv_*.so.* /stage/usr/local/lib/ \
+    && rm -rf /stage/usr/include \
+    && cp DarkHelp/src-python/DarkHelp.py /stage/usr/lib/python3/dist-packages/ \
+    && for name in opencv darknet DarkHelp; do mkdir -p /stage/usr/share/doc/$name; done \
+    && cp opencv/LICENSE /stage/usr/share/doc/opencv/ \
+    && cp darknet/LICENSE /stage/usr/share/doc/darknet/ \
+    && cp DarkHelp/license.txt /stage/usr/share/doc/DarkHelp/
+
+
+FROM docker.io/library/ubuntu:${UBUNTU_VERSION}
+
+ARG UBUNTU_VERSION
+ARG OPENCV_VERSION
+ARG DARKNET_REF
+ARG DARKHELP_REF
+LABEL org.opencontainers.image.title="nest-predator-base" \
+      org.opencontainers.image.description="Ubuntu ${UBUNTU_VERSION} with OpenCV ${OPENCV_VERSION} (minimal), Darknet ${DARKNET_REF}, DarkHelp ${DARKHELP_REF} and the Python packages of the nest predator detection app"
+
+ENV DEBIAN_FRONTEND=noninteractive
+# Runtime libraries of OpenCV, Darknet and DarkHelp. Darknet uses OpenMP itself, so pick the OpenMP variant of OpenBLAS.
+# Python packages come from Ubuntu where their versions satisfy Streamlit's requirements. Not pyarrow though: Ubuntu's
+# package depends on Gandiva, which pulls in LLVM, gRPC, Kerberos and more (~260 MB vs. ~170 MB for the pip wheel).
+# DejaVu Sans is for the labels in the previews, Pillow's own font has no umlauts.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgomp1 libjpeg-turbo8 libmagic1t64 libopenblas64-0-openmp libpng16-16t64 libprotobuf32t64 zlib1g \
+        fonts-dejavu-core \
+        python3 python3-venv python3-numpy python3-openpyxl python3-pandas python3-pil \
+        python3-altair python3-anyio python3-click python3-itsdangerous python3-packaging python3-requests \
+        python3-starlette python3-typing-extensions python3-uvicorn python3-watchdog python3-websockets \
+    && rm -rf /var/lib/apt/lists/*
+
+# pip only adds what Ubuntu lacks or has in incompatible versions (Streamlit itself, pydeck, protobuf, python-multipart)
+# and pyarrow (see above).
+# A venv keeps those separate from the apt-managed packages instead of overriding them system-wide.
+ENV VIRTUAL_ENV=/opt/venv PATH=/opt/venv/bin:$PATH
+COPY requirements.txt /tmp/
+RUN python3 -m venv --system-site-packages /opt/venv \
+    && pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+
+COPY --from=build /stage/ /
+# Fail the build if a runtime library of the copied binaries is missing
+RUN ldconfig \
+    && ! ldd /usr/local/lib/libopencv_*.so.* /usr/lib/libdarknet.so /usr/lib/libdarkhelp.so /usr/bin/darknet* \
+        /usr/bin/DarkHelp* | grep "not found" \
+    && python -c "import DarkHelp"
+
+# Darknet switches the process locale to "C", which would make Python read and write text files as ASCII
+ENV PYTHONUTF8=1
