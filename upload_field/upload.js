@@ -11,7 +11,7 @@ const LABELS = [[".title", "title"], [".hint", "hint"], [".pick-files", "pickFil
 // uploaded, the new field shows the running job instead of losing it.
 const job = {
   queue: [], collecting: 0, running: false, cancelled: false,
-  total: 0, done: 0, skipped: 0, duplicates: 0, failed: [], dismissed: false,
+  total: 0, done: 0, skipped: 0, duplicates: 0, unreadable: [], failed: [], dismissed: false,
   keys: new Set(),  // keys of all images sent in this session, see fileKey()
   api: null, texts: null, setStateValue: null, ui: null,
 };
@@ -140,7 +140,9 @@ async function walk(entry, found) {
 }
 
 function resetStatus() {
-  Object.assign(job, { total: 0, done: 0, skipped: 0, duplicates: 0, failed: [], cancelled: false, dismissed: false });
+  Object.assign(job, {
+    total: 0, done: 0, skipped: 0, duplicates: 0, unreadable: [], failed: [], cancelled: false, dismissed: false,
+  });
 }
 
 async function add(finding) {
@@ -209,6 +211,8 @@ async function uploadNext() {
       const answer = await response.json().catch(() => ({}));
       if (!response.ok) fail(item, job.texts.errors[answer.error] ?? answer.error ?? response.statusText);
       else if (answer.duplicate) job.duplicates++;
+      // analysed, but not an image or a broken one (see analysis.UNREADABLE)
+      else if (answer.error) note(job.unreadable, item, job.texts.errors[answer.error] ?? answer.error);
     } catch (error) {
       fail(item, error.message);
     }
@@ -218,9 +222,14 @@ async function uploadNext() {
 }
 
 function fail(item, reason) {
-  job.failed.push(`${item.path}: ${reason}`);
-  job.dismissed = false;  // the notes show up again
+  note(job.failed, item, reason);
   job.keys.delete(item.key);  // so that the image can be uploaded again
+}
+
+// A problem with one file. The notes show up again, also if they were dismissed.
+function note(list, item, reason) {
+  list.push(`${item.path}: ${reason}`);
+  job.dismissed = false;
 }
 
 function count(n) {
@@ -238,7 +247,8 @@ function render() {
   const ui = job.ui;
   if (!ui) return;
   const { total, done } = job;
-  const active = Boolean(job.collecting || total || job.skipped || job.duplicates || job.failed.length);
+  const active = Boolean(job.collecting || total || job.skipped || job.duplicates || job.unreadable.length
+    || job.failed.length);
   const compact = ui.zone.classList.contains("compact");
   ui.bar.style.width = `${total ? (100 * done) / total : 0}%`;
   ui.cancel.hidden = !job.running || job.cancelled;
@@ -256,8 +266,9 @@ function render() {
   const details = [];
   if (job.skipped) details.push(say("skipped", job.skipped, { count: count(job.skipped) }));
   if (job.duplicates) details.push(say("duplicates", job.duplicates, { count: count(job.duplicates) }));
-  if (job.failed.length) {
-    details.push(say("failed", job.failed.length, { count: count(job.failed.length) }), ...job.failed.slice(0, 5));
+  for (const key of ["unreadable", "failed"]) {
+    const list = job[key];
+    if (list.length) details.push(say(key, list.length, { count: count(list.length) }), ...list.slice(0, 5));
   }
   ui.details.replaceChildren(...details.map((text) => Object.assign(document.createElement("li"), { textContent: text })));
   ui.notes.hidden = !details.length || job.dismissed;
