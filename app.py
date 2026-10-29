@@ -43,6 +43,18 @@ CHART_COLORS = {"light": ChartColors("#2a78d6", "#eb6834", "#52514e"),
                 "dark": ChartColors("#3987e5", "#d95926", "#c3c2b7")}
 MUTED_COLOR = "#898781"  # readable on light and dark background, for annotations like the threshold
 
+# Layout that Streamlit has no options for. If an update changes the structure, the rules just have no effect.
+PAGE_CSS = """<style>
+/* less space above the title than Streamlit's 6rem */
+[data-testid="stMainBlockContainer"] { padding-top: 2rem; }
+/* The sidebar's content is only as high as itself, which leaves a stretch space no room to grow. These rules let it
+   fill the height (and take back most of the large padding below), so everything after the space sits at the bottom. */
+[data-testid="stSidebarContent"] { display: flex; flex-direction: column; }
+[data-testid="stSidebarUserContent"], [data-testid="stSidebarUserContent"] > div {
+    flex-grow: 1; display: flex; flex-direction: column; }
+[data-testid="stSidebarUserContent"] { padding-bottom: 1.5rem; }
+</style>"""
+
 
 def bin_start(field: str) -> str:
     """Start of a detection's bin in the confidence histogram, as Vega-Lite expression. Confidences have 4 decimals
@@ -315,6 +327,7 @@ def confirm_end(uploading: bool, has_results: bool) -> None:
 
 init_language()
 st.set_page_config(page_title=t("title"), layout="wide")
+st.html(PAGE_CSS)
 if st.session_state.get("end"):
     end_program(t("ended_title"), t("ended_text"))
 if "session" not in st.session_state:
@@ -345,16 +358,7 @@ class_options = sorted(detector.class_names,
                        key=lambda name: unicodedata.normalize("NFKD", class_name(name).casefold()))
 selected_classes = st.sidebar.multiselect(t("classes"), class_options, format_func=class_name,
                                           placeholder=t("all_classes"), key="classes")
-# The sidebar's content is only as high as itself, which leaves a stretch space no room to grow. These rules let it fill
-# the height (and take back most of the large padding below), so the rest sits at the bottom. If a Streamlit update
-# changes the structure, the rest just follows the filters.
-st.html("""<style>
-[data-testid="stSidebarContent"] { display: flex; flex-direction: column; }
-[data-testid="stSidebarUserContent"], [data-testid="stSidebarUserContent"] > div {
-    flex-grow: 1; display: flex; flex-direction: column; }
-[data-testid="stSidebarUserContent"] { padding-bottom: 1.5rem; }
-</style>""")
-st.sidebar.space("stretch")
+st.sidebar.space("stretch")  # see PAGE_CSS
 # The file is only created when the button is clicked, not on every update during an upload. That happens in a thread
 # without access to the session, so the results view below hands over its tables in this dict. It updates them during
 # an upload, while the sidebar stays as it is.
