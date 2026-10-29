@@ -243,12 +243,14 @@ def show_results(results: list[ImageResult], threshold: float, selected_classes:
     m5.metric(t("metric_duration"), f"{1000 * sum(durations) / len(durations):.0f} ms" if durations else "–",
               help=t("metric_duration_help"))
 
-    # the file is only created when the button is clicked, not on every update during an upload
+    # The file is only created when the button is clicked, not on every update during an upload. That happens in a
+    # thread without access to the session, so the sheet names are looked up here.
+    detections_sheet, classes_sheet, images_sheet = t("sheet_detections"), t("sheet_classes"), t("sheet_images")
     export_columns = [file, taken, klass, confidence]
     st.download_button(
         t("excel"),
-        lambda: excel_file({t("sheet_detections"): detections_df[export_columns], t("sheet_classes"): classes_df,
-                            t("sheet_images"): images_df}, {confidence, max_confidence}),
+        lambda: excel_file({detections_sheet: detections_df[export_columns], classes_sheet: classes_df,
+                            images_sheet: images_df}, {confidence, max_confidence}),
         file_name=t("excel_file"), mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
     tab_gallery, tab_statistics = st.tabs([t("tab_gallery"), t("tab_statistics")])
