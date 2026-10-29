@@ -247,14 +247,6 @@ def show_results(results: list[ImageResult], threshold: float, selected_classes:
          for _, r, dets in filtered])
     durations = [r.duration for r in results if r.duration is not None]
 
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric(t("metric_images"), len(results))
-    m2.metric(t("metric_with_detection"), detections_df[IMAGE_ID].nunique())
-    m3.metric(t("metric_detections"), len(detections_df))
-    m4.metric(t("metric_unreadable"), len(errors))
-    m5.metric(t("metric_duration"), f"{1000 * sum(durations) / len(durations):.0f} ms" if durations else "–",
-              help=t("metric_duration_help"))
-
     # for the export button in the sidebar, which can't be part of this fragment
     st.session_state.export.update(
         sheets={t("sheet_detections"): detections_df[[file, taken, klass, confidence]],
@@ -282,6 +274,13 @@ def show_results(results: list[ImageResult], threshold: float, selected_classes:
 
     # the data behind each chart can be viewed and downloaded as CSV from the chart's menu
     with tab_statistics:
+        m1, m2, m3, m4, m5 = st.columns(5)
+        m1.metric(t("metric_images"), len(results))
+        m2.metric(t("metric_with_detection"), detections_df[IMAGE_ID].nunique())
+        m3.metric(t("metric_detections"), len(detections_df))
+        m4.metric(t("metric_unreadable"), len(errors))
+        m5.metric(t("metric_duration"), f"{1000 * sum(durations) / len(durations):.0f} ms" if durations else "–",
+                  help=t("metric_duration_help"))
         if errors:
             st.subheader(t("unreadable_title"))
             st.dataframe(pd.DataFrame({file: [label(r) for r in errors],
