@@ -57,17 +57,17 @@ Next time, steps 3 and 4 are enough. After changes to the program, build the ima
 
 ## Usage
 
-1. **Language:** The program starts in the language of your browser (German or English, otherwise English). You can switch it at the top of the sidebar under **Sprache · Language**. The choice is kept in the address, e.g. <http://localhost:8501/?lang=en>.
+1. **Language:** The program starts in the language of your browser (German or English, otherwise English). You can switch it at the bottom of the sidebar under **Sprache · Language**. The choice is kept in the address, e.g. <http://localhost:8501/?lang=en>.
 2. **Add images:** Drag images, folders or the content of an SD card into the field, or use **Select images** or **Select folder**. The analysis starts right away, the progress is shown below the field. Videos and other files are skipped.
 3. **More images:** You can add more images at any time, they are added to the previous results. Images that were already analysed are skipped. So you can try a few images first and then drag in the whole folder.
-4. **View results:** The **Gallery** shows the images with the detections, **Statistics** shows charts (images per class, confidence of the detections, time of day). **Download Excel** saves all results.
+4. **View results:** The **Gallery** shows the images with the detections, **Statistics** shows charts (images per class, confidence of the detections, time of day). **Download results** at the bottom of the sidebar saves all results as an Excel file.
 5. **Filter:** In the sidebar, the **Confidence threshold** sets how sure the program has to be for a detection to count. With **Classes** you can limit the results to certain animals. Gallery, statistics and Excel file follow these settings.
 6. **Start over** in the sidebar discards all results, e.g. for a new SD card.
 7. **Quit** in the sidebar closes the program. Afterwards the browser window can be closed.
 
 ## Good to know
 
-- **Save your results:** The results are only kept while the program is running. So download the Excel file before **Start over** or **Quit**.
+- **Save your results:** The results are only kept while the program is running. So use **Download results** before **Start over** or **Quit**.
 - **Keep the page open:** While images are uploaded, the page has to stay open. The browser asks before closing it.
 - **Duration:** Depending on the computer, the program needs about 0.2–0.3 seconds per image, so about a quarter of an hour for 4000 images. The size of the SD card doesn't matter.
 - **Duplicate images** are recognized by file name, size and modification date. A copy saved with a different date counts as a new image.

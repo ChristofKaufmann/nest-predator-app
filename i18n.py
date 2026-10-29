@@ -26,8 +26,8 @@ TEXTS = {
         "model_info": "Modell mit {classes} Klassen · DarkHelp {darkhelp} · Darknet {darknet}",
         "quit_title": "Programm beenden?",
         "quit_uploading": "Es werden gerade noch Bilder ausgewertet.",
-        "quit_results": "Die Ergebnisse gehen dabei verloren. Lade sie vorher mit „{excel}“ herunter, wenn du sie "
-                        "behalten möchtest.",
+        "quit_results": "Die Ergebnisse gehen dabei verloren. Wenn du sie behalten möchtest, klicke vorher auf "
+                        "„{export}“.",
         "cancel": "Abbrechen",
         "ended_title": "Prädatoren-Erkennung wurde beendet",
         "ended_text": "Du kannst dieses Fenster jetzt schließen. Zum Weiterarbeiten das Programm neu starten.",
@@ -39,8 +39,10 @@ TEXTS = {
         "metric_unreadable": "Nicht lesbar",
         "metric_duration": "Mittlere Verarbeitungszeit",
         "metric_duration_help": "Pro Bild für Einlesen, Erkennung und Vorschau, ohne die Übertragung.",
-        "excel": "Excel herunterladen",
-        "excel_file": "erkennungen.xlsx",
+        "export": "Ergebnisse herunterladen",
+        "export_help": "Als Excel-Datei: die Erkennungen, eine Übersicht pro Klasse und alle Bilder. Konfidenzschwelle "
+                       "und Klassenfilter gelten auch hier.",
+        "export_file": "erkennungen.xlsx",
         "sheet_detections": "Erkennungen",
         "sheet_classes": "Pro Klasse",
         "sheet_images": "Bilder",
@@ -131,7 +133,7 @@ TEXTS = {
         "model_info": "Model with {classes} classes · DarkHelp {darkhelp} · Darknet {darknet}",
         "quit_title": "Quit the program?",
         "quit_uploading": "Images are still being analysed.",
-        "quit_results": "The results will be lost. Download them first with “{excel}” if you want to keep them.",
+        "quit_results": "The results will be lost. If you want to keep them, click “{export}” first.",
         "cancel": "Cancel",
         "ended_title": "Predator Detection has been closed",
         "ended_text": "You can close this window now. To continue working, start the program again.",
@@ -143,8 +145,10 @@ TEXTS = {
         "metric_unreadable": "Unreadable",
         "metric_duration": "Mean processing time",
         "metric_duration_help": "Per image for reading, detection and preview, without the upload.",
-        "excel": "Download Excel",
-        "excel_file": "detections.xlsx",
+        "export": "Download results",
+        "export_help": "As an Excel file: the detections, an overview per class and all images. The confidence "
+                       "threshold and the class filter apply here too.",
+        "export_file": "detections.xlsx",
         "sheet_detections": "Detections",
         "sheet_classes": "Per class",
         "sheet_images": "Images",
@@ -228,7 +232,7 @@ def init_language() -> None:
 
 def language_selector() -> None:
     st.sidebar.segmented_control(TEXTS[st.session_state.language]["language"], list(LANGUAGES),
-                                 format_func=LANGUAGES.get, key="language", required=True)
+                                 format_func=LANGUAGES.get, key="language", required=True, width="stretch")
     st.query_params["lang"] = st.session_state.language
 
 

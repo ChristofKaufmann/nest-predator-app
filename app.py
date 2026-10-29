@@ -243,15 +243,11 @@ def show_results(results: list[ImageResult], threshold: float, selected_classes:
     m5.metric(t("metric_duration"), f"{1000 * sum(durations) / len(durations):.0f} ms" if durations else "–",
               help=t("metric_duration_help"))
 
-    # The file is only created when the button is clicked, not on every update during an upload. That happens in a
-    # thread without access to the session, so the sheet names are looked up here.
-    detections_sheet, classes_sheet, images_sheet = t("sheet_detections"), t("sheet_classes"), t("sheet_images")
-    export_columns = [file, taken, klass, confidence]
-    st.download_button(
-        t("excel"),
-        lambda: excel_file({detections_sheet: detections_df[export_columns], classes_sheet: classes_df,
-                            images_sheet: images_df}, {confidence, max_confidence}),
-        file_name=t("excel_file"), mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    # for the export button in the sidebar, which can't be part of this fragment
+    st.session_state.export.update(
+        sheets={t("sheet_detections"): detections_df[[file, taken, klass, confidence]],
+                t("sheet_classes"): classes_df, t("sheet_images"): images_df},
+        percent_columns={confidence, max_confidence})
 
     tab_gallery, tab_statistics = st.tabs([t("tab_gallery"), t("tab_statistics")])
 
@@ -308,7 +304,7 @@ def confirm_end(uploading: bool, has_results: bool) -> None:
     if uploading:
         st.warning(t("quit_uploading"))
     if has_results:
-        st.write(t("quit_results", excel=t("excel")))
+        st.write(t("quit_results", export=t("export")))
     col_end, col_cancel = st.columns(2)
     if col_end.button(t("quit"), type="primary", width="stretch"):
         st.session_state.end = True
@@ -338,9 +334,8 @@ except Exception as e:
 st.title(t("title"))
 uploading = upload_field(session.api_url, upload_texts())
 
-# --- Sidebar: language and filters -----------------------------------------------------------------------------------
+# --- Sidebar: filters at the top, the rest at the bottom -------------------------------------------------------------
 # The widgets have keys, so that they keep their values when their labels change with the language.
-language_selector()
 # rounded like CONFIDENCE_EDGES, the slider would give e.g. 0.30000000000000004
 threshold = round(st.sidebar.slider(t("threshold"), analysis.MIN_CONFIDENCE, 1.0, 0.5, CONFIDENCE_STEP, format="%.2f",
                                     help=t("threshold_help"), key="threshold"), 2)
@@ -350,12 +345,33 @@ class_options = sorted(detector.class_names,
                        key=lambda name: unicodedata.normalize("NFKD", class_name(name).casefold()))
 selected_classes = st.sidebar.multiselect(t("classes"), class_options, format_func=class_name,
                                           placeholder=t("all_classes"), key="classes")
-if st.sidebar.button(t("start_over"), disabled=uploading or not session.results, help=t("start_over_help")):
+# The sidebar's content is only as high as itself, which leaves a stretch space no room to grow. These rules let it fill
+# the height (and take back most of the large padding below), so the rest sits at the bottom. If a Streamlit update
+# changes the structure, the rest just follows the filters.
+st.html("""<style>
+[data-testid="stSidebarContent"] { display: flex; flex-direction: column; }
+[data-testid="stSidebarUserContent"], [data-testid="stSidebarUserContent"] > div {
+    flex-grow: 1; display: flex; flex-direction: column; }
+[data-testid="stSidebarUserContent"] { padding-bottom: 1.5rem; }
+</style>""")
+st.sidebar.space("stretch")
+# The file is only created when the button is clicked, not on every update during an upload. That happens in a thread
+# without access to the session, so the results view below hands over its tables in this dict. It updates them during
+# an upload, while the sidebar stays as it is.
+export = st.session_state.setdefault("export", {})
+st.sidebar.download_button(t("export"), lambda: excel_file(**export), file_name=t("export_file"),
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", on_click="ignore",
+                           icon=":material/download:", disabled=not session.results, help=t("export_help"),
+                           width="stretch")
+col_start_over, col_quit = st.sidebar.columns(2)
+if col_start_over.button(t("start_over"), disabled=uploading or not session.results, help=t("start_over_help"),
+                         width="stretch"):
     st.session_state.session = analysis.Session()
     st.session_state.gallery_limit = GALLERY_STEP
     st.rerun()
-if st.sidebar.button(t("quit"), help=t("quit_help")):
+if col_quit.button(t("quit"), help=t("quit_help"), width="stretch"):
     st.dialog(t("quit_title"))(confirm_end)(uploading, bool(session.results))
+language_selector()
 st.sidebar.caption(t("model_info", classes=len(detector.class_names), darkhelp=detector.versions["DarkHelp"],
                      darknet=detector.versions["Darknet"]))
 
