@@ -10,3 +10,17 @@ fileWatcherType = "none"
 
 [browser]
 gatherUsageStats = false
+
+# Chart colours for light and dark mode, from a colour-blind-safe palette. The charts in app.py refer to them (scale
+# ranges "category" and "ramp", default mark colour) instead of fixed colours, so they follow a change of the theme
+# right away. Categorical: blue for "detected", orange for "not detected", the rest in fixed order. Sequential: blue
+# from low to high, in dark mode reversed, so that low values fade into the background.
+[theme.light]
+chartCategoricalColors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
+chartSequentialColors = ["#cde2fb", "#b7d3f6", "#86b6ef", "#6da7ec", "#5598e7", "#2a78d6", "#256abf", "#1c5cab",
+                         "#104281", "#0d366b"]
+
+[theme.dark]
+chartCategoricalColors = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"]
+chartSequentialColors = ["#0d366b", "#104281", "#1c5cab", "#256abf", "#2a78d6", "#5598e7", "#6da7ec", "#86b6ef",
+                         "#b7d3f6", "#cde2fb"]

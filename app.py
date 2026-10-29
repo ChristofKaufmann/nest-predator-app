@@ -5,10 +5,12 @@ Start it with `streamlit run server.py`, which adds the route that receives the 
 
 import colorsys
 import functools
+import hashlib
 import io
 import json
 import unicodedata
-from typing import NamedTuple
+from collections.abc import Callable
+from datetime import datetime
 
 import altair as alt
 import pandas as pd
@@ -18,13 +20,15 @@ from PIL import Image, ImageDraw, ImageFont
 import analysis
 from analysis import ImageResult
 from detector import Detection
-from i18n import init_language, language_selector, number, t, upload_texts
+from i18n import init_language, language_selector, number, t, time_locale, upload_texts
 from shutdown import end_program
 from upload_field import upload_field
 
 GALLERY_STEP = 24
 GALLERY_COLUMNS = 3
 REFRESH_SECONDS = 2  # how often the results are updated during an upload
+TIMELINE_STEP = 22  # height of a row of the timeline in pixels
+ALL_IMAGES_OPACITY = 0.25  # of one image in the row "all images" of the timeline
 IMAGE_ID = "_image"  # internal column to count images, never shown
 # Bin edges of the confidence histogram. The threshold slider uses the same 5 % steps (rounded the same way), so a bin
 # never holds detections from both sides of the threshold.
@@ -33,15 +37,10 @@ CONFIDENCE_EDGES = [round(analysis.MIN_CONFIDENCE + i * CONFIDENCE_STEP, 2)
                     for i in range(round((1 - analysis.MIN_CONFIDENCE) / CONFIDENCE_STEP) + 1)]
 
 
-class ChartColors(NamedTuple):
-    detected: str      # categorical slot 1
-    not_detected: str  # categorical slot 2
-    text: str          # secondary text
-
-
-CHART_COLORS = {"light": ChartColors("#2a78d6", "#eb6834", "#52514e"),
-                "dark": ChartColors("#3987e5", "#d95926", "#c3c2b7")}
-MUTED_COLOR = "#898781"  # readable on light and dark background, for annotations like the threshold
+# The charts take their colours from the theme (see .streamlit/config.toml), so they change with it without a rerun:
+# the default mark colour and the first two categorical colours stand for "detected" and "not detected", the
+# sequential colours for confidence. Text and annotations use this grey, readable on light and dark background.
+MUTED_COLOR = "#898781"
 
 # Layout that Streamlit has no options for. If an update changes the structure, the rules just have no effect.
 PAGE_CSS = """<style>
@@ -54,6 +53,8 @@ PAGE_CSS = """<style>
     flex-grow: 1; display: flex; flex-direction: column; }
 [data-testid="stSidebarUserContent"] { padding-bottom: 1.5rem; }
 </style>"""
+# Streamlit cuts axis labels at 100 px, which would cut long class names like "Krähen (verschiedene)"
+CLASS_AXIS = alt.Axis(labelLimit=200)
 
 
 def bin_start(field: str) -> str:
@@ -117,21 +118,21 @@ def excel_file(sheets: dict[str, pd.DataFrame], percent_columns: set[str]) -> by
     return buffer.getvalue()
 
 
-def bar_chart(df: pd.DataFrame, colors: ChartColors) -> alt.LayerChart:
+def bar_chart(df: pd.DataFrame) -> alt.LayerChart:
     """Horizontal bars of images per class, largest first, with the value at the tip."""
     images, klass = t("col_images"), t("col_class")
     base = alt.Chart(df).encode(
-        y=alt.Y(field=klass, type="nominal", sort="-x", title=None),
+        y=alt.Y(field=klass, type="nominal", sort="-x", title=None, axis=CLASS_AXIS),
         x=alt.X(field=images, type="quantitative", title=images, axis=alt.Axis(tickMinStep=1)),
         tooltip=[alt.Tooltip(field=klass, type="nominal"), alt.Tooltip(field=images, type="quantitative"),
                  alt.Tooltip(field=t("col_detections"), type="quantitative")])
-    bars = base.mark_bar(color=colors.detected, size=18, cornerRadiusEnd=4)
-    labels = base.mark_text(align="left", dx=4, color=colors.text).encode(
+    bars = base.mark_bar(size=18, cornerRadiusEnd=4)
+    labels = base.mark_text(align="left", dx=4, color=MUTED_COLOR).encode(
         text=alt.Text(field=images, type="quantitative"))
     return (bars + labels).properties(height=alt.Step(28))
 
 
-def confidence_histogram(df: pd.DataFrame, threshold: float, colors: ChartColors) -> alt.LayerChart:
+def confidence_histogram(df: pd.DataFrame, threshold: float) -> alt.LayerChart:
     """Histogram of all detections in the bins of bin_start(): blue from the threshold on, orange below, and a rule
     at the threshold."""
     confidence, status, detections = t("col_confidence"), t("col_status"), t("col_detections")
@@ -146,8 +147,7 @@ def confidence_histogram(df: pd.DataFrame, threshold: float, colors: ChartColors
         # A bin holds only one status, so nothing to stack. Stacked bars with rounded corners and x2 aren't drawn.
         y=alt.Y(aggregate="count", type="quantitative", stack=None, title=detections, axis=alt.Axis(tickMinStep=1)),
         color=alt.Color(field=status, type="nominal", title=None, legend=alt.Legend(orient="top"),
-                        scale=alt.Scale(domain=[t("detected"), t("not_detected")],
-                                        range=[colors.detected, colors.not_detected])),
+                        scale=alt.Scale(domain=[t("detected"), t("not_detected")], range="category")),
         tooltip=[alt.Tooltip(field="bin_start", type="quantitative", format=".0%", title=t("from")),
                  alt.Tooltip(field="bin_end", type="quantitative", format=".0%", title=t("to")),
                  alt.Tooltip(field=status, type="nominal"),
@@ -160,7 +160,7 @@ def confidence_histogram(df: pd.DataFrame, threshold: float, colors: ChartColors
     return bars + rule.mark_rule(color=MUTED_COLOR, strokeWidth=2) + label
 
 
-def hour_chart(df: pd.DataFrame, colors: ChartColors) -> alt.LayerChart:
+def hour_chart(df: pd.DataFrame) -> alt.LayerChart:
     """Images per hour of the day, all 24 hours on the axis. Images with detection are stacked at the bottom, images
     without on top.
 
@@ -180,14 +180,143 @@ def hour_chart(df: pd.DataFrame, colors: ChartColors) -> alt.LayerChart:
         y=alt.Y(field="top", type="quantitative", title=images, axis=alt.Axis(tickMinStep=1)),
         y2=alt.Y2(field="bottom"),
         color=alt.Color(field=detection, type="nominal", title=None, legend=alt.Legend(orient="top"),
-                        scale=alt.Scale(domain=[with_detection, without_detection],
-                                        range=[colors.detected, colors.not_detected])),
+                        scale=alt.Scale(domain=[with_detection, without_detection], range="category")),
         tooltip=[alt.Tooltip(field=hour, type="ordinal"), alt.Tooltip(field=detection, type="nominal"),
                  alt.Tooltip(field=images, type="quantitative")])
     layers = [base.mark_bar(size=16, cornerRadiusTopLeft=radius, cornerRadiusTopRight=radius, y2Offset=offset)
               .transform_filter(f"(datum.top == datum.total) == {top} && (datum.bottom > 0) == {stacked}")
               for top, radius in (("true", 4), ("false", 0)) for stacked, offset in (("true", -2), ("false", 0))]
     return alt.layer(*layers)
+
+
+def timeline_chart(df: pd.DataFrame, rows: list[str]) -> alt.LayerChart:
+    """The images on a time axis: one row with all images, then one row per class, coloured by its confidence.
+
+    Every image gets a line of fixed width, so images taken seconds apart stay visible when zoomed out. Where they
+    overlap, the most confident one is drawn on top.
+
+    The time axis zooms with Ctrl + wheel or a pinch on the touchpad (the plain wheel keeps scrolling the page) and
+    moves by dragging. Streamlit reports the visible part, which filters the results, see show_timeline(). Vega-Lite
+    would place a tick every 40 px, too close for the labels: it would hide every second one, over several days
+    possibly all dates, leaving only "12:00". With a tick every 90 px, no label has to be hidden. The first label also
+    shows the date, unless it is one already (midnight).
+
+    The times are ISO strings without time zone, which the browser reads as local time, so they appear as the camera
+    wrote them.
+    """
+    file, taken, klass, confidence = t("col_file"), t("col_taken"), t("col_class"), t("col_confidence")
+    day = t("axis_day")
+    has_confidence = f"isValid(datum[{json.dumps(confidence)}])"
+    zoom = alt.selection_interval(bind="scales", encodings=["x"], zoom="wheel![event.ctrlKey]", name="zoom")
+    file_and_time = [alt.Tooltip(field=file, type="nominal"),
+                     alt.Tooltip(field=taken, type="temporal", format=t("time_format"))]
+    base = alt.Chart(df).encode(
+        x=alt.X(field=taken, type="temporal", title=None, scale=alt.Scale(nice=False, padding=8),
+                axis=alt.Axis(format={"year": "%Y", "quarter": "%B", "month": "%B", "week": day, "date": day,
+                                      "hours": "%H:%M", "minutes": "%H:%M", "seconds": "%H:%M:%S",
+                                      "milliseconds": "%H:%M:%S.%L"},
+                              tickCount=alt.ExprRef("ceil(width / 90)"),
+                              labelExpr="datum.index == 0 && hours(datum.value) + minutes(datum.value) "
+                                        "+ seconds(datum.value) > 0 ? [datum.label, timeFormat(datum.value, "
+                                        f"{json.dumps(t('day_format'))})] : datum.label")),
+        y=alt.Y(field=klass, type="nominal", sort=rows, title=None, axis=CLASS_AXIS),
+        tooltip=file_and_time)
+    # All images in the text colour of the page (black or white, following the theme) and translucent, so that images
+    # close together add up to a stronger line than a single one
+    images = base.transform_filter(f"!{has_confidence}").mark_tick(
+        color="currentColor", opacity=ALL_IMAGES_OPACITY, thickness=2, size=TIMELINE_STEP - 6).add_params(zoom)
+    # opaque, ticks are drawn with 70 % opacity by default
+    detections = base.transform_filter(has_confidence).mark_tick(
+        opacity=1, thickness=3, size=TIMELINE_STEP - 6).encode(
+        color=alt.Color(field=confidence, type="quantitative", title=confidence,
+                        scale=alt.Scale(domain=[analysis.MIN_CONFIDENCE, 1], range="ramp"),
+                        legend=alt.Legend(orient="top", format=".0%")),
+        order=alt.Order(field=confidence, type="quantitative", sort="ascending"),
+        tooltip=[*file_and_time, alt.Tooltip(field=klass, type="nominal"),
+                 alt.Tooltip(field=confidence, type="quantitative", format=".0%")])
+    chart = alt.layer(images, detections).properties(height=alt.Step(TIMELINE_STEP))
+    locale = time_locale()
+    return chart.configure(locale={"time": locale}) if locale else chart
+
+
+def selected_period(selection: dict) -> tuple[datetime, datetime] | None:
+    """The visible part of the timeline as capture times, None if nothing was zoomed or moved.
+
+    The browser reports it in milliseconds since 1970. It read the capture times as its local time (see
+    timeline_chart()), so they are converted back with its time zone, not the server's (UTC in Docker).
+    """
+    period = next(iter(selection.get("zoom", {}).values()), None)
+    if not period:
+        return None
+    timezone = st.context.timezone
+
+    def capture_time(ms: float) -> datetime:
+        if timezone:
+            return pd.Timestamp(ms, unit="ms", tz="UTC").tz_convert(timezone).tz_localize(None).to_pydatetime()
+        return datetime.fromtimestamp(ms / 1000)
+
+    return capture_time(period[0]), capture_time(period[1])
+
+
+def period_text(start: datetime, end: datetime) -> str:
+    if start.date() == end.date():
+        return f"{start:{t('day_format')}} {start:%H:%M:%S}–{end:%H:%M:%S}"
+    return f"{start:{t('time_format')}} – {end:{t('time_format')}}"
+
+
+def reset_timeline() -> None:
+    st.session_state.timeline_resets = st.session_state.get("timeline_resets", 0) + 1
+
+
+def show_timeline(results: list[ImageResult], label: Callable[[ImageResult], str]) -> list[ImageResult]:
+    """Show the timeline of all images and return those in its visible period, all if nothing was zoomed or moved.
+    Images without capture time are only part of the latter.
+
+    The timeline ignores the threshold and the class filter. Otherwise it would change with them, and a new chart
+    starts without zoom.
+    """
+    file, taken, klass, confidence = t("col_file"), t("col_taken"), t("col_class"), t("col_confidence")
+    # the images with capture time, with the highest confidence per class
+    timeline = []
+    for r in results:
+        if r.taken:
+            when = r.taken.isoformat()  # see timeline_chart()
+            timeline.append({file: label(r), taken: when, klass: t("all_images"), confidence: None})
+            best: dict[str, float] = {}
+            for d in r.detections:
+                best[d.name] = max(best.get(d.name, 0), d.confidence)
+            timeline += [{file: label(r), taken: when, klass: class_name(name), confidence: value}
+                         for name, value in best.items()]
+    timeline_df = pd.DataFrame(timeline, columns=[file, taken, klass, confidence])
+    # the classes with the most images first, unlike the bar chart not depending on the threshold
+    rows = [t("all_images"), *timeline_df.loc[timeline_df[confidence].notna(), klass].value_counts().index]
+    readable = sum(1 for r in results if not r.error)
+    timed = sum(1 for r in results if r.taken)
+
+    period = None
+    with st.expander(t("timeline"), expanded=True, key="timeline_expander"):
+        if not timed:
+            st.info(t("no_capture_times"))
+        else:
+            chart = timeline_chart(timeline_df, rows)
+            # Another chart (new images, language, "Whole period") starts without zoom, so it gets a new key.
+            # Otherwise the zoom of the old one would still filter the results, without being visible.
+            version = hashlib.sha1(chart.to_json().encode()).hexdigest()[:16]
+            event = st.altair_chart(chart, width="stretch", on_select="rerun",
+                                    key=f"timeline_{version}_{st.session_state.get('timeline_resets', 0)}")
+            period = selected_period(event.selection)
+            st.caption(t("timeline_caption", readable, count=number(timed), total=number(readable),
+                         minimum=f"{analysis.MIN_CONFIDENCE:.0%}"))
+    if not period:
+        return results
+    start, end = period
+    in_period = [r for r in results if r.taken and start <= r.taken <= end]
+    # outside the expander, so that the filter shows also when it is collapsed
+    with st.container(horizontal=True, vertical_alignment="center"):
+        st.markdown(t("period", len(results), period=period_text(start, end), count=number(len(in_period)),
+                      total=number(len(results))))
+        st.button(t("whole_period"), on_click=reset_timeline, icon=":material/zoom_out_map:")
+    return in_period
 
 
 def common_folder(paths: list[str]) -> str:
@@ -211,13 +340,15 @@ def show_results(results: list[ImageResult], threshold: float, selected_classes:
                        if d.confidence >= threshold and (not selected_classes or d.name in selected_classes)),
                       key=lambda d: -d.confidence)
 
-    filtered = [(i, r, visible(r)) for i, r in enumerate(results)]
-    errors = [r for r in results if r.error]
     # the folders that all images share say nothing, e.g. "DCIM/100MEDIA/" when one SD card folder was uploaded
     prefix = common_folder([r.name for r in results])
 
     def label(result: ImageResult) -> str:
         return result.name.removeprefix(prefix)
+
+    results = show_timeline(results, label)
+    filtered = [(i, r, visible(r)) for i, r in enumerate(results)]
+    errors = [r for r in results if r.error]
 
     def error_text(result: ImageResult) -> str | None:
         return t("error_unreadable") if result.error == analysis.UNREADABLE else result.error
@@ -253,6 +384,7 @@ def show_results(results: list[ImageResult], threshold: float, selected_classes:
                 t("sheet_classes"): classes_df, t("sheet_images"): images_df},
         percent_columns={confidence, max_confidence})
 
+    readable = [(r, dets) for _, r, dets in filtered if not r.error]
     tab_gallery, tab_statistics = st.tabs([t("tab_gallery"), t("tab_statistics")])
 
     with tab_gallery:
@@ -285,8 +417,6 @@ def show_results(results: list[ImageResult], threshold: float, selected_classes:
             st.subheader(t("unreadable_title"))
             st.dataframe(pd.DataFrame({file: [label(r) for r in errors],
                                        t("col_error"): [error_text(r) for r in errors]}), hide_index=True)
-        colors = CHART_COLORS.get(st.context.theme.type or "light", CHART_COLORS["light"])
-        readable = [(r, dets) for _, r, dets in filtered if not r.error]
         if readable:
             st.subheader(t("classes_title"))
             # as text, a bar would dwarf the classes as most images usually show nothing
@@ -294,11 +424,11 @@ def show_results(results: list[ImageResult], threshold: float, selected_classes:
             st.markdown(t("without_detection_count", len(readable), count=number(without_detection),
                           total=number(len(readable))))
             if not classes_df.empty:
-                st.altair_chart(bar_chart(classes_df, colors), width="stretch")
+                st.altair_chart(bar_chart(classes_df), width="stretch")
             st.caption(t("classes_caption"))
         if not confidences_df.empty:
             st.subheader(t("confidence_title"))
-            st.altair_chart(confidence_histogram(confidences_df, threshold, colors), width="stretch")
+            st.altair_chart(confidence_histogram(confidences_df, threshold), width="stretch")
             st.caption(t("confidence_caption", minimum=f"{analysis.MIN_CONFIDENCE:.0%}"))
 
         timed = pd.DataFrame([(r.taken.hour, t("with_detection") if dets else t("without_detection"))
@@ -306,7 +436,7 @@ def show_results(results: list[ImageResult], threshold: float, selected_classes:
         if not timed.empty:
             st.subheader(t("hour_title"))
             hours = timed.value_counts().reset_index(name=images)
-            st.altair_chart(hour_chart(hours, colors), width="stretch")
+            st.altair_chart(hour_chart(hours), width="stretch")
             st.caption(t("hour_caption", len(readable), count=number(len(timed)), total=number(len(readable))))
 
 

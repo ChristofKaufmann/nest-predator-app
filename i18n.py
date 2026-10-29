@@ -8,6 +8,20 @@ import streamlit as st
 
 LANGUAGES = {"de": "Deutsch", "en": "English"}
 DEFAULT_LANGUAGE = "en"  # for browsers in any other language
+# Month and day names in the time axes of charts (d3 time format locale). Charts use English without one.
+TIME_LOCALES = {
+    "de": {
+        "dateTime": "%A, %e. %B %Y, %X",
+        "date": "%d.%m.%Y",
+        "time": "%H:%M:%S",
+        "periods": ["AM", "PM"],
+        "days": ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"],
+        "shortDays": ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"],
+        "months": ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober",
+                   "November", "Dezember"],
+        "shortMonths": ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"],
+    },
+}
 
 TEXTS = {
     "de": {
@@ -40,13 +54,14 @@ TEXTS = {
         "metric_duration": "Mittlere Verarbeitungszeit",
         "metric_duration_help": "Pro Bild für Einlesen, Erkennung und Vorschau, ohne die Übertragung.",
         "export": "Ergebnisse herunterladen",
-        "export_help": "Als Excel-Datei: die Erkennungen, eine Übersicht pro Klasse und alle Bilder. Konfidenzschwelle "
-                       "und Klassenfilter gelten auch hier.",
+        "export_help": "Als Excel-Datei: die Erkennungen, eine Übersicht pro Klasse und alle Bilder. "
+                       "Konfidenzschwelle, Klassenfilter und der Zeitraum der Zeitachse gelten auch hier.",
         "export_file": "erkennungen.xlsx",
         "sheet_detections": "Erkennungen",
         "sheet_classes": "Pro Klasse",
         "sheet_images": "Bilder",
         "tab_gallery": "Galerie",
+        "timeline": "Zeitachse",
         "tab_statistics": "Statistik",
         "only_hits": "Nur Bilder mit Erkennungen",
         "no_images": "Keine Bilder für die aktuelle Auswahl.",
@@ -76,6 +91,28 @@ TEXTS = {
                          "Erkennung“ richtet sich nach Konfidenzschwelle und Klassenauswahl.",
                          "Aus den Aufnahmezeiten in den Bilddateien ({count} von {total} Bildern haben eine). „Mit "
                          "Erkennung“ richtet sich nach Konfidenzschwelle und Klassenauswahl."],
+        "all_images": "Alle Bilder",
+        "time_format": "%d.%m.%Y %H:%M:%S",
+        "day_format": "%d.%m.%Y",
+        "axis_day": "%-d. %b",
+        "no_capture_times": "Keines der Bilder hat eine Aufnahmezeit.",
+        "period": ["**Zeitraum {period}:** {count} von {total} Bild",
+                   "**Zeitraum {period}:** {count} von {total} Bildern"],
+        "whole_period": "Ganzer Zeitraum",
+        "timeline_caption": ["Jeder Strich ist ein Bild zu seiner Aufnahmezeit ({count} von {total} Bild hat eine). "
+                             "In der Zeile „Alle Bilder“ wird ein Strich kräftiger, je mehr Bilder dicht "
+                             "beieinanderliegen. Die Farbe in den Klassen zeigt die höchste Konfidenz der Klasse im "
+                             "Bild, alle Klassen und Erkennungen ab {minimum} unabhängig von Klassenfilter und "
+                             "Konfidenzschwelle. Galerie, Statistik und Excel-Datei zeigen nur den sichtbaren "
+                             "Zeitraum: Ziehen verschiebt ihn, Strg + Mausrad oder zwei Finger auf dem Touchpad "
+                             "zoomen, ein Doppelklick zeigt wieder alles.",
+                             "Jeder Strich ist ein Bild zu seiner Aufnahmezeit ({count} von {total} Bildern haben "
+                             "eine). In der Zeile „Alle Bilder“ wird ein Strich kräftiger, je mehr Bilder dicht "
+                             "beieinanderliegen. Die Farbe in den Klassen zeigt die höchste Konfidenz der Klasse im "
+                             "Bild, alle Klassen und Erkennungen ab {minimum} unabhängig von Klassenfilter und "
+                             "Konfidenzschwelle. Galerie, Statistik und Excel-Datei zeigen nur den sichtbaren "
+                             "Zeitraum: Ziehen verschiebt ihn, Strg + Mausrad oder zwei Finger auf dem Touchpad "
+                             "zoomen, ein Doppelklick zeigt wieder alles."],
         "col_file": "Datei",
         "col_taken": "Aufnahmezeit",
         "col_class": "Klasse",
@@ -151,12 +188,13 @@ TEXTS = {
         "metric_duration_help": "Per image for reading, detection and preview, without the upload.",
         "export": "Download results",
         "export_help": "As an Excel file: the detections, an overview per class and all images. The confidence "
-                       "threshold and the class filter apply here too.",
+                       "threshold, the class filter and the period of the timeline apply here too.",
         "export_file": "detections.xlsx",
         "sheet_detections": "Detections",
         "sheet_classes": "Per class",
         "sheet_images": "Images",
         "tab_gallery": "Gallery",
+        "timeline": "Timeline",
         "tab_statistics": "Statistics",
         "only_hits": "Only images with detections",
         "no_images": "No images for the current selection.",
@@ -186,6 +224,27 @@ TEXTS = {
                          "detection” depends on the confidence threshold and the selected classes.",
                          "From the capture times in the image files ({count} of {total} images have one). “With "
                          "detection” depends on the confidence threshold and the selected classes."],
+        "all_images": "All images",
+        "time_format": "%Y-%m-%d %H:%M:%S",
+        "day_format": "%Y-%m-%d",
+        "axis_day": "%-d %b",
+        "no_capture_times": "None of the images has a capture time.",
+        "period": ["**Period {period}:** {count} of {total} image", "**Period {period}:** {count} of {total} images"],
+        "whole_period": "Whole period",
+        "timeline_caption": ["Each line is an image at its capture time ({count} of {total} image has one). In the "
+                             "row “All images”, a line gets stronger the more images lie close together. The colour "
+                             "in the classes shows the highest confidence of the class in the image, all classes and "
+                             "detections from {minimum} on, regardless of the class filter and the confidence "
+                             "threshold. Gallery, statistics and Excel file only show the visible period: dragging "
+                             "moves it, Ctrl + mouse wheel or two fingers on the touchpad zoom, a double click shows "
+                             "everything again.",
+                             "Each line is an image at its capture time ({count} of {total} images have one). In the "
+                             "row “All images”, a line gets stronger the more images lie close together. The colour "
+                             "in the classes shows the highest confidence of the class in the image, all classes and "
+                             "detections from {minimum} on, regardless of the class filter and the confidence "
+                             "threshold. Gallery, statistics and Excel file only show the visible period: dragging "
+                             "moves it, Ctrl + mouse wheel or two fingers on the touchpad zoom, a double click shows "
+                             "everything again."],
         "col_file": "File",
         "col_taken": "Taken",
         "col_class": "Class",
@@ -254,6 +313,11 @@ def t(key: str, n: int | None = None, **values) -> str:
 
 def upload_texts() -> dict:
     return TEXTS[st.session_state.language]["upload"]
+
+
+def time_locale() -> dict | None:
+    """Month and day names for charts in the current language, None for English."""
+    return TIME_LOCALES.get(st.session_state.language)
 
 
 def number(value: int) -> str:

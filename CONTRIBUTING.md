@@ -7,7 +7,7 @@ Technical details of Predator Detection. Usage and starting the program are desc
 | File | Content |
 | --- | --- |
 | `server.py` | Entry point (`streamlit run server.py`). Starts the Streamlit app `app.py` as `st.App` together with the routes `/api/<token>/upload` (receives the images one by one) and `/api/<token>/paths` (further paths of images that were already analysed). Removes the previews when shutting down. |
-| `app.py` | The user interface: gallery, statistics, Excel export, filters. During an upload a fragment updates the results every 2 seconds. |
+| `app.py` | The user interface: timeline (its zoom filters the results), gallery, statistics, Excel export, filters. During an upload a fragment updates the results every 2 seconds. |
 | `i18n.py` | All texts of the user interface in German and English, and the language selection. |
 | `analysis.py` | Model, analysis of a single image, results and previews per browser session, and the two routes. |
 | `detector.py` | Connection to Darknet via DarkHelp. |
@@ -16,7 +16,7 @@ Technical details of Predator Detection. Usage and starting the program are desc
 | `LICENSE` | BSD 3-Clause License of this program. |
 | `DarkHelp.py` | Unmodified copy of the Python bindings from `DarkHelp/src-python/` (MIT license, see `LICENSE-DarkHelp.txt`), for running without Docker. The base image brings its own copy. |
 | `model/` | The model, not part of the repository (see `model/README.md`): exactly one `.cfg`, `.names` and `.weights`, and optionally the display names of the classes (`species.toml`, see below). Another folder can be set with the environment variable `MODEL_DIR`. |
-| `.streamlit/config.toml` | Hides the deploy button and the developer menu and switches off the file watcher. |
+| `.streamlit/config.toml` | Hides the deploy button and the developer menu, switches off the file watcher and sets the chart colours for light and dark mode. The charts refer to these colours instead of fixed ones, so they follow a change of the theme right away. |
 | `environment.yml`, `requirements.txt` | Python packages for conda and pip. |
 | `Dockerfile.base` | The base image: builds OpenCV, Darknet and DarkHelp and adds Python with the packages from `requirements.txt`. |
 | `Dockerfile` | The app image: app and model on top of the base image. |
