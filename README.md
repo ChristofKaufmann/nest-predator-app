@@ -57,11 +57,14 @@ Next time, steps 3 and 4 are enough. After changes to the program, build the ima
 
 ## Usage
 
-1. **Language:** The program starts in the language of your browser (German or English, otherwise English). You can switch it at the bottom of the sidebar under **Sprache · Language**. The choice is kept in the address, e.g. <http://localhost:8501/?lang=en>.
+1. **Language:** The program starts in the language of your browser (German or English, otherwise English). You can switch it in the sidebar under **Sprache · Language**. The choice is kept in the address, e.g. <http://localhost:8501/?lang=en>.
 2. **Add images:** Drag images, folders or the content of an SD card into the field, or use **Select images** or **Select folder**. The analysis starts right away, the progress is shown below the field. Videos and other files are skipped.
 3. **More images:** You can add more images at any time, they are added to the previous results. Images that were already analysed are skipped. So you can try a few images first and then drag in the whole folder.
-4. **View results:** The **Timeline** below the field shows all images at their capture time, with one row per class and the confidence as colour. Series of images and uncertain detections become visible there. Zoom in to look at a series: the results below then only cover the visible period. Use Ctrl + mouse wheel or two fingers on the touchpad to zoom, drag to move the period, and double-click or use **Whole period** to show everything again. Below, the **Gallery** shows the images with the detections. **Statistics** shows key figures (images, detections, unreadable files, processing time) and charts (images per class, confidence of the detections, time of day). **Download results** at the bottom of the sidebar saves all results as an Excel file.
-5. **Filter:** In the sidebar, the **Confidence threshold** sets how sure the program has to be for a detection to count. With **Classes** you can limit the results to certain animals. Gallery, statistics and Excel file follow these settings.
+4. **View results:** Under **Filters** below the field, a timeline shows all images, with one row per class and the confidence as colour: blue from the confidence threshold on, orange below. Series of images and uncertain detections become visible there. At its top right you choose the axis: **Capture time** places the images at the time they were taken, **Order** places them side by side in the order of the gallery (by folder and file name), which also shows images without capture time. **Help** next to it explains the timeline. Below, the **Gallery** shows the images with the detections. **Statistics** shows key figures (images, detections, unreadable files, processing time) and charts (images per class, confidence of the detections, time of day). **Download results** in the sidebar saves all results as an Excel file.
+5. **Filter:** Gallery, statistics and Excel file follow the settings under **Filters**:
+   - The **Confidence threshold** sets how sure the program has to be for a detection to count. Click on the colour scale above the timeline or drag on it to set it in steps of 5 %.
+   - In the timeline, a click on the box or the name of a class ticks or unticks it, a click on **All images** all classes at once. **All classes** below the timeline ticks all again.
+   - Zoom into the timeline to look at a series: the results then only cover the visible part. Use Ctrl + mouse wheel or two fingers on the touchpad to zoom and drag to move. Double-click or use **Whole period** or **Show all** to see everything again.
 6. **Start over** in the sidebar discards all results, e.g. for a new SD card.
 7. **Quit** in the sidebar closes the program. Afterwards the browser window can be closed.
 
@@ -73,7 +76,7 @@ Next time, steps 3 and 4 are enough. After changes to the program, build the ima
 - **Duplicate images** are recognized by file name, size and modification date. A copy saved with a different date counts as a new image.
 - **File names:** The paths are shown from the dragged-in folder on, without the folders that all images have in common. The browser doesn't reveal where the files are stored on your computer, so two images with the same name that were chosen on their own can't be told apart.
 - **Capture time:** It is read from the image files, if the camera stores it there.
-- **Class names** are shown in the language of the user interface, e.g. "Red fox" or "Fuchs". In the classes list of the sidebar they are sorted alphabetically.
+- **Class names** are shown in the language of the user interface, e.g. "Red fox" or "Fuchs". In the timeline, the classes with the most images come first. Only classes that were detected in at least one image are listed.
 - **Quit** closes the program for all browser windows in which it is currently open.
 
 Technical details and notes on development are in [CONTRIBUTING.md](CONTRIBUTING.md).

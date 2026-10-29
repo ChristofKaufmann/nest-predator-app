@@ -30,8 +30,6 @@ TEXTS = {
         "loading_model": "Lade Modell …",
         "model_error": "Das Modell konnte nicht geladen werden: {error}",
         "threshold": "Konfidenzschwelle",
-        "threshold_help": "Nur Erkennungen ab dieser Konfidenz werden angezeigt, gezählt und exportiert.",
-        "classes": "Klassen",
         "all_classes": "Alle Klassen",
         "start_over": "Neu beginnen",
         "start_over_help": "Alle Ergebnisse verwerfen, z. B. für eine neue Serie von Bildern.",
@@ -55,13 +53,15 @@ TEXTS = {
         "metric_duration_help": "Pro Bild für Einlesen, Erkennung und Vorschau, ohne die Übertragung.",
         "export": "Ergebnisse herunterladen",
         "export_help": "Als Excel-Datei: die Erkennungen, eine Übersicht pro Klasse und alle Bilder. "
-                       "Konfidenzschwelle, Klassenfilter und der Zeitraum der Zeitachse gelten auch hier.",
+                       "Die unter „Filter“ eingestellte Konfidenzschwelle, die angehakten Klassen und der "
+                       "sichtbare Bereich gelten auch hier.",
         "export_file": "erkennungen.xlsx",
         "sheet_detections": "Erkennungen",
         "sheet_classes": "Pro Klasse",
         "sheet_images": "Bilder",
         "tab_gallery": "Galerie",
-        "timeline": "Zeitachse",
+        "filters": "Filter",
+        "help": "Hilfe",
         "tab_statistics": "Statistik",
         "only_hits": "Nur Bilder mit Erkennungen",
         "no_images": "Keine Bilder für die aktuelle Auswahl.",
@@ -95,26 +95,35 @@ TEXTS = {
         "time_format": "%d.%m.%Y %H:%M:%S",
         "day_format": "%d.%m.%Y",
         "axis_day": "%-d. %b",
-        "no_capture_times": "Keines der Bilder hat eine Aufnahmezeit.",
         "period": ["**Zeitraum {period}:** {count} von {total} Bild",
                    "**Zeitraum {period}:** {count} von {total} Bildern"],
         "whole_period": "Ganzer Zeitraum",
-        "timeline_caption": ["Jeder Strich ist ein Bild zu seiner Aufnahmezeit ({count} von {total} Bild hat eine). "
-                             "In der Zeile „Alle Bilder“ wird ein Strich kräftiger, je mehr Bilder dicht "
-                             "beieinanderliegen. Die Farbe in den Klassen zeigt die höchste Konfidenz der Klasse im "
-                             "Bild, alle Klassen und Erkennungen ab {minimum} unabhängig von Klassenfilter und "
-                             "Konfidenzschwelle. Galerie, Statistik und Excel-Datei zeigen nur den sichtbaren "
-                             "Zeitraum: Ziehen verschiebt ihn, Strg + Mausrad oder zwei Finger auf dem Touchpad "
-                             "zoomen, ein Doppelklick zeigt wieder alles.",
-                             "Jeder Strich ist ein Bild zu seiner Aufnahmezeit ({count} von {total} Bildern haben "
-                             "eine). In der Zeile „Alle Bilder“ wird ein Strich kräftiger, je mehr Bilder dicht "
-                             "beieinanderliegen. Die Farbe in den Klassen zeigt die höchste Konfidenz der Klasse im "
-                             "Bild, alle Klassen und Erkennungen ab {minimum} unabhängig von Klassenfilter und "
-                             "Konfidenzschwelle. Galerie, Statistik und Excel-Datei zeigen nur den sichtbaren "
-                             "Zeitraum: Ziehen verschiebt ihn, Strg + Mausrad oder zwei Finger auf dem Touchpad "
-                             "zoomen, ein Doppelklick zeigt wieder alles."],
+        "positions": ["**Bilder {positions}:** {count} von {total} Bild",
+                      "**Bilder {positions}:** {count} von {total} Bildern"],
+        "show_all": "Alles zeigen",
+        "ticked_classes": "**Klassen:** {classes}",
+        "no_classes": "keine",
+        "timeline_axis": "Achse",
+        "axis_time": "Aufnahmezeit",
+        "axis_order": "Reihenfolge",
+        "timeline_time": ["Jeder Strich ist ein Bild zu seiner Aufnahmezeit ({count} von {total} Bild hat eine).",
+                          "Jeder Strich ist ein Bild zu seiner Aufnahmezeit ({count} von {total} Bildern haben "
+                          "eine)."],
+        "untimed": ["Das Bild ohne Aufnahmezeit ist nur unter „{order}“ zu sehen.",
+                    "Die {count} Bilder ohne Aufnahmezeit sind nur unter „{order}“ zu sehen."],
+        "timeline_order": "Jeder Strich ist ein Bild, in derselben Reihenfolge wie in der Galerie (nach Ordner und "
+                          "Dateiname).",
+        "timeline_caption": "In der Zeile „Alle Bilder“ wird ein Strich kräftiger, je mehr Bilder dicht "
+                            "beieinanderliegen. Die Farbe in den Klassen zeigt die höchste Konfidenz der Klasse im "
+                            "Bild, alle Erkennungen ab {minimum}: blau ab der Konfidenzschwelle, orange darunter. "
+                            "Galerie, Statistik und Excel-Datei zeigen nur die Erkennungen ab der Schwelle, die "
+                            "angehakten Klassen und den sichtbaren Bereich. Ein Klick auf die Farbskala oder Ziehen "
+                            "darauf setzt die Schwelle. Ein Klick auf eine Klasse hakt sie an oder ab, bei „Alle "
+                            "Bilder“ alle Klassen. Ziehen in der Zeitachse verschiebt den Bereich, Strg + Mausrad "
+                            "oder zwei Finger auf dem Touchpad zoomen, ein Doppelklick zeigt wieder alles.",
         "col_file": "Datei",
         "col_taken": "Aufnahmezeit",
+        "col_position": "Bild Nr.",
         "col_class": "Klasse",
         "col_confidence": "Konfidenz",
         "col_max_confidence": "Höchste Konfidenz",
@@ -164,8 +173,6 @@ TEXTS = {
         "loading_model": "Loading model …",
         "model_error": "The model could not be loaded: {error}",
         "threshold": "Confidence threshold",
-        "threshold_help": "Only detections from this confidence on are shown, counted and exported.",
-        "classes": "Classes",
         "all_classes": "All classes",
         "start_over": "Start over",
         "start_over_help": "Discard all results, e.g. for a new series of images.",
@@ -188,13 +195,14 @@ TEXTS = {
         "metric_duration_help": "Per image for reading, detection and preview, without the upload.",
         "export": "Download results",
         "export_help": "As an Excel file: the detections, an overview per class and all images. The confidence "
-                       "threshold, the class filter and the period of the timeline apply here too.",
+                       "threshold, the ticked classes and the visible part set under “Filters” apply here too.",
         "export_file": "detections.xlsx",
         "sheet_detections": "Detections",
         "sheet_classes": "Per class",
         "sheet_images": "Images",
         "tab_gallery": "Gallery",
-        "timeline": "Timeline",
+        "filters": "Filters",
+        "help": "Help",
         "tab_statistics": "Statistics",
         "only_hits": "Only images with detections",
         "no_images": "No images for the current selection.",
@@ -228,25 +236,32 @@ TEXTS = {
         "time_format": "%Y-%m-%d %H:%M:%S",
         "day_format": "%Y-%m-%d",
         "axis_day": "%-d %b",
-        "no_capture_times": "None of the images has a capture time.",
         "period": ["**Period {period}:** {count} of {total} image", "**Period {period}:** {count} of {total} images"],
         "whole_period": "Whole period",
-        "timeline_caption": ["Each line is an image at its capture time ({count} of {total} image has one). In the "
-                             "row “All images”, a line gets stronger the more images lie close together. The colour "
-                             "in the classes shows the highest confidence of the class in the image, all classes and "
-                             "detections from {minimum} on, regardless of the class filter and the confidence "
-                             "threshold. Gallery, statistics and Excel file only show the visible period: dragging "
-                             "moves it, Ctrl + mouse wheel or two fingers on the touchpad zoom, a double click shows "
-                             "everything again.",
-                             "Each line is an image at its capture time ({count} of {total} images have one). In the "
-                             "row “All images”, a line gets stronger the more images lie close together. The colour "
-                             "in the classes shows the highest confidence of the class in the image, all classes and "
-                             "detections from {minimum} on, regardless of the class filter and the confidence "
-                             "threshold. Gallery, statistics and Excel file only show the visible period: dragging "
-                             "moves it, Ctrl + mouse wheel or two fingers on the touchpad zoom, a double click shows "
-                             "everything again."],
+        "positions": ["**Images {positions}:** {count} of {total} image",
+                      "**Images {positions}:** {count} of {total} images"],
+        "show_all": "Show all",
+        "ticked_classes": "**Classes:** {classes}",
+        "no_classes": "none",
+        "timeline_axis": "Axis",
+        "axis_time": "Capture time",
+        "axis_order": "Order",
+        "timeline_time": ["Each line is an image at its capture time ({count} of {total} image has one).",
+                          "Each line is an image at its capture time ({count} of {total} images have one)."],
+        "untimed": ["The image without capture time is only shown under “{order}”.",
+                    "The {count} images without capture time are only shown under “{order}”."],
+        "timeline_order": "Each line is an image, in the same order as in the gallery (by folder and file name).",
+        "timeline_caption": "In the row “All images”, a line gets stronger the more images lie close together. The "
+                            "colour in the classes shows the highest confidence of the class in the image, all "
+                            "detections from {minimum} on: blue from the confidence threshold on, orange below. "
+                            "Gallery, statistics and Excel file only show the detections from the threshold on, the "
+                            "ticked classes and the visible part. A click on the colour scale or dragging on it sets "
+                            "the threshold. A click on a class ticks or unticks it, on “All images” all classes. "
+                            "Dragging in the timeline moves the visible part, Ctrl + mouse wheel or two fingers on "
+                            "the touchpad zoom, a double click shows everything again.",
         "col_file": "File",
         "col_taken": "Taken",
+        "col_position": "Image no.",
         "col_class": "Class",
         "col_confidence": "Confidence",
         "col_max_confidence": "Highest confidence",
