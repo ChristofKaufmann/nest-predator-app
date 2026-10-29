@@ -11,7 +11,7 @@ const LABELS = [[".title", "title"], [".hint", "hint"], [".pick-files", "pickFil
 // uploaded, the new field shows the running job instead of losing it.
 const job = {
   queue: [], collecting: 0, running: false, cancelled: false,
-  total: 0, done: 0, skipped: 0, duplicates: 0, failed: [],
+  total: 0, done: 0, skipped: 0, duplicates: 0, failed: [], dismissed: false,
   keys: new Set(),  // keys of all images sent in this session, see fileKey()
   api: null, texts: null, setStateValue: null, ui: null,
 };
@@ -28,11 +28,18 @@ export default function (component) {
   // this function runs again when the data (a new session after "Start over", another language) or the theme changes
   if (job.ui?.root !== parentElement) job.ui = setup(parentElement);
   const api = new URL(data.api, document.baseURI);
-  if (api.href !== job.api?.href) job.keys.clear();  // a new session knows no images yet
+  if (api.href !== job.api?.href) {
+    // a new session (e.g. after "Start over") knows no images yet, and the status of the previous one is over
+    job.keys.clear();
+    if (!job.running) resetStatus();
+  }
   job.api = api;
   job.texts = data.texts;
   for (const [selector, key] of LABELS) parentElement.querySelector(selector).textContent = data.texts[key];
+  job.ui.dismiss.title = data.texts.dismiss;
+  job.ui.dismiss.ariaLabel = data.texts.dismiss;
   job.setStateValue = setStateValue;
+  arrange(Boolean(data.compact));
   render();
   const ui = job.ui;
   return () => {
@@ -73,9 +80,29 @@ function setup(root) {
     for (const item of job.queue.splice(0)) job.keys.delete(item.key);
     render();
   };
-  return {
-    root, status: $(".status"), bar: $(".bar > div"), text: $(".text"), details: $(".details"), cancel: $(".cancel"),
+  // the notes stay hidden until the next images come, or another one fails
+  $(".dismiss").onclick = () => {
+    job.dismissed = true;
+    render();
   };
+  return {
+    root, zone, title: $(".title"), status: $(".status"), track: $(".bar"), bar: $(".bar > div"), line: $(".line"),
+    text: $(".text"), notes: $(".notes"), details: $(".details"), dismiss: $(".dismiss"), cancel: $(".cancel"),
+  };
+}
+
+// The compact field is a single line: the status line and the progress bar move into the drop zone, only the details
+// stay below it.
+function arrange(compact) {
+  const ui = job.ui;
+  ui.zone.classList.toggle("compact", compact);
+  ui.title.textContent = job.texts[compact ? "titleCompact" : "title"];
+  if (compact) {
+    ui.zone.prepend(ui.line);
+    ui.zone.append(ui.track);
+  } else {
+    ui.status.prepend(ui.track, ui.line);
+  }
 }
 
 function isImage(name) {
@@ -112,10 +139,12 @@ async function walk(entry, found) {
   }
 }
 
+function resetStatus() {
+  Object.assign(job, { total: 0, done: 0, skipped: 0, duplicates: 0, failed: [], cancelled: false, dismissed: false });
+}
+
 async function add(finding) {
-  if (!job.running && !job.collecting) {
-    Object.assign(job, { total: 0, done: 0, skipped: 0, duplicates: 0, failed: [], cancelled: false });
-  }
+  if (!job.running && !job.collecting) resetStatus();
   job.collecting++;
   render();
   try {
@@ -136,6 +165,7 @@ async function add(finding) {
     if (known.length) reportPaths(known);
   } catch (error) {
     job.failed.push(say("folderError", 0, { error: error.message }));
+    job.dismissed = false;
   }
   job.collecting--;
   if (!job.running && job.queue.length) run();
@@ -189,6 +219,7 @@ async function uploadNext() {
 
 function fail(item, reason) {
   job.failed.push(`${item.path}: ${reason}`);
+  job.dismissed = false;  // the notes show up again
   job.keys.delete(item.key);  // so that the image can be uploaded again
 }
 
@@ -207,7 +238,8 @@ function render() {
   const ui = job.ui;
   if (!ui) return;
   const { total, done } = job;
-  ui.status.hidden = !(job.collecting || total || job.skipped || job.duplicates || job.failed.length);
+  const active = Boolean(job.collecting || total || job.skipped || job.duplicates || job.failed.length);
+  const compact = ui.zone.classList.contains("compact");
   ui.bar.style.width = `${total ? (100 * done) / total : 0}%`;
   ui.cancel.hidden = !job.running || job.cancelled;
   if (job.collecting) {
@@ -228,6 +260,10 @@ function render() {
     details.push(say("failed", job.failed.length, { count: count(job.failed.length) }), ...job.failed.slice(0, 5));
   }
   ui.details.replaceChildren(...details.map((text) => Object.assign(document.createElement("li"), { textContent: text })));
+  ui.notes.hidden = !details.length || job.dismissed;
+  ui.status.hidden = compact ? ui.notes.hidden : !active;
+  ui.line.hidden = compact && !active;
+  ui.track.hidden = compact && !job.running;
 }
 
 function remaining() {

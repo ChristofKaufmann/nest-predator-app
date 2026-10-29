@@ -13,9 +13,9 @@ _component = st.components.v2.component(
 )
 
 
-def upload_field(api_url: str, texts: dict, key: str = "upload_field") -> bool:
+def upload_field(api_url: str, texts: dict, compact: bool = False, key: str = "upload_field") -> bool:
     """Show the upload field for the session's API (see analysis.API_ROUTE) with the given texts (see i18n.TEXTS) and
-    return whether an upload is running."""
-    result = _component(key=key, data={"api": api_url, "texts": texts}, default={"uploading": False},
-                        on_uploading_change=lambda: None)
+    return whether an upload is running. A compact field is a single line with the progress in it."""
+    result = _component(key=key, data={"api": api_url, "texts": texts, "compact": compact},
+                        default={"uploading": False}, on_uploading_change=lambda: None)
     return bool(result.uploading)

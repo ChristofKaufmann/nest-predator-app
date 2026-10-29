@@ -344,7 +344,8 @@ except Exception as e:
 
 # --- Upload: the images go directly to the upload route, which analyses them ----------------------------------------
 st.title(t("title"))
-uploading = upload_field(session.api_url, upload_texts())
+# a single line once there are results, to leave the space to them
+uploading = upload_field(session.api_url, upload_texts(), compact=bool(session.results))
 
 # --- Sidebar: filters at the top, the rest at the bottom -------------------------------------------------------------
 # The widgets have keys, so that they keep their values when their labels change with the language.
