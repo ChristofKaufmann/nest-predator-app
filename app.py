@@ -316,19 +316,22 @@ def confidence_scale(threshold: float | None, on_scale: str, shades: alt.Scale) 
         return f"(datum.{field} - {analysis.MIN_CONFIDENCE}) / {1 - analysis.MIN_CONFIDENCE} * {scale_width}"
 
     pixels = alt.X(field=SCALE_X, type="quantitative", scale=None)
+    # outside the plot, where Vega-Lite would cut it off, and without the tooltip that Streamlit gives every mark,
+    # which would show the internal fields
+    outside = {"clip": False, "tooltip": None}
     # a rectangle per half percent, with an outline in its colour against gaps between them
     fine = alt.Chart(pd.DataFrame({"c": [round(analysis.MIN_CONFIDENCE + i / 200, 3)
                                          for i in range(round((1 - analysis.MIN_CONFIDENCE) * 200))]}))
     colours = fine.transform_calculate(**{SHADE: shade("c"), SCALE_X: x("c"), "end": f"{x('c')} + "
                                           f"{scale_width} / {(1 - analysis.MIN_CONFIDENCE) * 200}"})
-    bar = colours.mark_rect(strokeWidth=1, clip=False).encode(
+    bar = colours.mark_rect(strokeWidth=1, **outside).encode(
         x=pixels, x2=alt.X2(field="end"), y=alt.value(-44), y2=alt.value(-32),
         color=alt.Color(field=SHADE, type="quantitative", scale=shades, legend=None),
         stroke=alt.Stroke(field=SHADE, type="quantitative", scale=shades, legend=None))
     tens = alt.Chart(pd.DataFrame({"c": [round(i / 10, 1) for i in range(round(analysis.MIN_CONFIDENCE * 10), 11)]}))
     tens = tens.transform_calculate(**{SCALE_X: x("c")}).encode(x=pixels)
-    tick_marks = tens.mark_rule(color=MUTED_COLOR, clip=False).encode(y=alt.value(-32), y2=alt.value(-28))
-    tick_labels = tens.mark_text(color=MUTED_COLOR, baseline="top", fontSize=10, clip=False).encode(
+    tick_marks = tens.mark_rule(color=MUTED_COLOR, **outside).encode(y=alt.value(-32), y2=alt.value(-28))
+    tick_labels = tens.mark_text(color=MUTED_COLOR, baseline="top", fontSize=10, **outside).encode(
         y=alt.value(-26), text=alt.Text(field="c", type="quantitative", format=".0%"))
 
     threshold_param = alt.selection_point(
@@ -340,15 +343,15 @@ def confidence_scale(threshold: float | None, on_scale: str, shades: alt.Scale) 
     half_step = f"{scale_width} * {CONFIDENCE_STEP / 2 / (1 - analysis.MIN_CONFIDENCE)}"
     targets = steps.transform_calculate(start=f"max(datum.{SCALE_X} - {half_step}, 0)",
                                         end=f"min(datum.{SCALE_X} + {half_step}, {scale_width})"
-                                        ).mark_rect(fill="transparent", cursor="pointer", clip=False).encode(
+                                        ).mark_rect(fill="transparent", cursor="pointer", **outside).encode(
         x=alt.X(field="start", type="quantitative", scale=None), x2=alt.X2(field="end"),
         y=alt.value(-48), y2=alt.value(-14)).add_params(threshold_param)
     selected = steps.transform_filter({"param": "threshold", "empty": False}).encode(x=pixels)
-    handle = selected.mark_rule(color="currentColor", strokeWidth=2.5, clip=False).encode(
+    handle = selected.mark_rule(color="currentColor", strokeWidth=2.5, **outside).encode(
         y=alt.value(-48), y2=alt.value(-28))
     title = selected.transform_calculate(title=f"{json.dumps(t('threshold') + ': ')} + format(datum.{STEP}, '.0%')"
                                          ).mark_text(align="left", baseline="bottom", fontWeight="bold",
-                                                     color="currentColor", clip=False).encode(
+                                                     color="currentColor", **outside).encode(
         x=alt.value(0), y=alt.value(-52), text=alt.Text(field="title", type="nominal"))
     return [bar, tick_marks, tick_labels, targets, handle, title]
 
