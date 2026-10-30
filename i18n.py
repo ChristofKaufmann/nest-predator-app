@@ -66,7 +66,6 @@ TEXTS = {
         "only_hits": "Nur Bilder mit Erkennungen",
         "no_images": "Keine Bilder für die aktuelle Auswahl.",
         "more_images": "Weitere Bilder anzeigen (noch {count})",
-        "date_format": "%d.%m.%Y %H:%M",
         "unreadable_title": "Nicht lesbare Dateien",
         "error_unreadable": "Kein lesbares Bild",
         "classes_title": "Bilder pro Klasse",
@@ -91,7 +90,7 @@ TEXTS = {
                          "Erkennung“ richtet sich nach Konfidenzschwelle und Klassenauswahl.",
                          "Aus den Aufnahmezeiten in den Bilddateien ({count} von {total} Bildern haben eine). „Mit "
                          "Erkennung“ richtet sich nach Konfidenzschwelle und Klassenauswahl."],
-        "all_images": "Alle Bilder",
+        "all_images": "Alle",
         "time_format": "%d.%m.%Y %H:%M:%S",
         "day_format": "%d.%m.%Y",
         "axis_day": "%-d. %b",
@@ -113,13 +112,13 @@ TEXTS = {
                     "Die {count} Bilder ohne Aufnahmezeit sind nur unter „{order}“ zu sehen."],
         "timeline_order": "Jeder Strich ist ein Bild, in derselben Reihenfolge wie in der Galerie (nach Ordner und "
                           "Dateiname).",
-        "timeline_caption": "In der Zeile „Alle Bilder“ wird ein Strich kräftiger, je mehr Bilder dicht "
+        "timeline_caption": "In der Zeile „{all}“ wird ein Strich kräftiger, je mehr Bilder dicht "
                             "beieinanderliegen. Die Farbe in den Klassen zeigt die höchste Konfidenz der Klasse im "
                             "Bild, alle Erkennungen ab {minimum}: blau ab der Konfidenzschwelle, orange darunter. "
                             "Galerie, Statistik und Excel-Datei zeigen nur die Erkennungen ab der Schwelle, die "
                             "angehakten Klassen und den sichtbaren Bereich. Ein Klick auf die Farbskala oder Ziehen "
-                            "darauf setzt die Schwelle. Ein Klick auf eine Klasse hakt sie an oder ab, bei „Alle "
-                            "Bilder“ alle Klassen. Ziehen in der Zeitachse verschiebt den Bereich, Strg + Mausrad "
+                            "darauf setzt die Schwelle. Ein Klick auf eine Klasse hakt sie an oder ab, bei „{all}“ "
+                            "alle Klassen. Ziehen in der Zeitachse verschiebt den Bereich, Strg + Mausrad "
                             "oder zwei Finger auf dem Touchpad zoomen, ein Doppelklick zeigt wieder alles.",
         "col_file": "Datei",
         "col_taken": "Aufnahmezeit",
@@ -207,7 +206,6 @@ TEXTS = {
         "only_hits": "Only images with detections",
         "no_images": "No images for the current selection.",
         "more_images": "Show more images ({count} left)",
-        "date_format": "%Y-%m-%d %H:%M",
         "unreadable_title": "Unreadable files",
         "error_unreadable": "Not a readable image",
         "classes_title": "Images per class",
@@ -232,7 +230,7 @@ TEXTS = {
                          "detection” depends on the confidence threshold and the selected classes.",
                          "From the capture times in the image files ({count} of {total} images have one). “With "
                          "detection” depends on the confidence threshold and the selected classes."],
-        "all_images": "All images",
+        "all_images": "All",
         "time_format": "%Y-%m-%d %H:%M:%S",
         "day_format": "%Y-%m-%d",
         "axis_day": "%-d %b",
@@ -251,12 +249,12 @@ TEXTS = {
         "untimed": ["The image without capture time is only shown under “{order}”.",
                     "The {count} images without capture time are only shown under “{order}”."],
         "timeline_order": "Each line is an image, in the same order as in the gallery (by folder and file name).",
-        "timeline_caption": "In the row “All images”, a line gets stronger the more images lie close together. The "
+        "timeline_caption": "In the row “{all}”, a line gets stronger the more images lie close together. The "
                             "colour in the classes shows the highest confidence of the class in the image, all "
                             "detections from {minimum} on: blue from the confidence threshold on, orange below. "
                             "Gallery, statistics and Excel file only show the detections from the threshold on, the "
                             "ticked classes and the visible part. A click on the colour scale or dragging on it sets "
-                            "the threshold. A click on a class ticks or unticks it, on “All images” all classes. "
+                            "the threshold. A click on a class ticks or unticks it, on “{all}” all classes. "
                             "Dragging in the timeline moves the visible part, Ctrl + mouse wheel or two fingers on "
                             "the touchpad zoom, a double click shows everything again.",
         "col_file": "File",

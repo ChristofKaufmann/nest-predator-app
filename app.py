@@ -29,7 +29,7 @@ REFRESH_SECONDS = 2  # how often the results are updated during an upload
 TIMELINE_STEP = 22  # height of a row of the timeline in pixels
 TIMELINE_FONT_SIZE = 12  # of the class names in the timeline
 TIMELINE_BOX_SPACE = 24  # pixels between the class names and the timeline, for the boxes
-ALL_IMAGES_OPACITY = 0.25  # of one image in the row "all images" of the timeline
+ALL_IMAGES_OPACITY = 0.25  # of one image in the row "all" of the timeline
 UNTICKED_OPACITY = 0.45  # of the name of a class that isn't ticked in the timeline
 SCALE_WIDTH = 400  # of the confidence scale above the timeline, at most, in pixels
 CONTROLS_WIDTH = 300  # room for the axis switch and the help right of the confidence scale, see PAGE_CSS
@@ -37,8 +37,9 @@ CONTROLS_WIDTH = 300  # room for the axis switch and the help right of the confi
 IMAGE_ID = "_image"  # to count images
 CLASS_ID = "_class"  # a row of the timeline: the class name of the model, which doesn't change with the language
 TICKED = "_ticked"  # whether a row of the timeline is ticked
+PARTLY = "_partly"  # whether the row "all" is ticked in part: some classes are ticked, but not all
 CLICK = "_click"  # the number of the next click on a row of the timeline, see timeline_reported()
-ALL_ROWS = ""  # CLASS_ID of the row "all images"
+ALL_ROWS = ""  # CLASS_ID of the row "all", which shows all images and ticks all classes
 STEP = "_step"  # a threshold that the confidence scale above the timeline can be set to
 SHADE = "_shade"  # position in the diverging colours, see shade()
 SCALE_X = "_x"  # position on the confidence scale in pixels
@@ -284,6 +285,8 @@ def timeline_chart(df: pd.DataFrame, rows: pd.DataFrame, by_order: bool, zoom: l
     clicked = {"param": "rows", "empty": False}
     is_ticked = {"field": TICKED, "equal": True}
     shows_ticked = {"or": [{"and": [clicked, {"not": is_ticked}]}, {"and": [{"not": clicked}, is_ticked]}]}
+    # a click on it ticks all
+    shows_partly = {"and": [{"not": clicked}, {"field": PARTLY, "equal": True}]}
     # outside the plot, where Vega-Lite would cut them off in a zoomable chart
     labels = alt.Chart(rows).encode(y=y, x=alt.value(0))
     boxes = labels.mark_point(shape="square", size=110, filled=True, fill="transparent", stroke=MUTED_COLOR,
@@ -292,12 +295,15 @@ def timeline_chart(df: pd.DataFrame, rows: pd.DataFrame, by_order: bool, zoom: l
     ticks = labels.transform_filter(shows_ticked).mark_text(
         text="✓", fontSize=TIMELINE_FONT_SIZE - 1, fontWeight="bold", color="currentColor",
         xOffset=-TIMELINE_BOX_SPACE / 2, clip=False)
+    dash = labels.transform_filter(shows_partly).mark_text(
+        text="–", fontSize=TIMELINE_FONT_SIZE - 1, fontWeight="bold", color="currentColor",
+        xOffset=-TIMELINE_BOX_SPACE / 2, clip=False)
     # Vega-Lite only lets marks with a selection or a tooltip receive clicks. The tooltip shows long names in full.
     names = labels.mark_text(align="right", dx=-TIMELINE_BOX_SPACE, fontSize=TIMELINE_FONT_SIZE, limit=200,
                              color="currentColor", clip=False, cursor="pointer").encode(
         text=alt.Text(field=klass, type="nominal"), tooltip=alt.Tooltip(field=klass, type="nominal"),
-        opacity={"condition": {"test": shows_ticked, "value": 1}, "value": UNTICKED_OPACITY})
-    chart = alt.layer(images, detections, boxes, ticks, names, *confidence_scale(threshold, on_scale, shades)
+        opacity={"condition": {"test": {"or": [shows_ticked, shows_partly]}, "value": 1}, "value": UNTICKED_OPACITY})
+    chart = alt.layer(images, detections, boxes, ticks, dash, names, *confidence_scale(threshold, on_scale, shades)
                       ).properties(height=alt.Step(TIMELINE_STEP))
     locale = time_locale()
     return chart.configure(locale={"time": locale}) if locale else chart
@@ -491,6 +497,7 @@ def show_timeline(results: list[ImageResult], label: Callable[[ImageResult], str
     rows = pd.DataFrame([{klass: t("all_images"), CLASS_ID: ALL_ROWS},
                          *({klass: class_name(name), CLASS_ID: name} for name in classes)])
     rows[TICKED] = rows[CLASS_ID].isin(ticked)
+    rows[PARTLY] = (rows[CLASS_ID] == ALL_ROWS) & bool(hidden) & bool(set(classes) - hidden)
     rows[CLICK] = state["clicks"]
     timed = sum(1 for r in readable if r.taken)
 
@@ -523,7 +530,7 @@ def show_timeline(results: list[ImageResult], label: Callable[[ImageResult], str
                              order=t("axis_order")))
         else:
             help_text.markdown(t("timeline_order"))
-        help_text.markdown(t("timeline_caption", minimum=f"{analysis.MIN_CONFIDENCE:.0%}"))
+        help_text.markdown(t("timeline_caption", minimum=f"{analysis.MIN_CONFIDENCE:.0%}", all=t("all_images")))
 
     # outside the expander, so that the filters show also when it is collapsed
     zoom = state["zoom"]
@@ -628,7 +635,7 @@ def show_results(results: list[ImageResult]) -> None:
         columns = st.columns(GALLERY_COLUMNS)
         for i, (r, dets) in enumerate(gallery[:st.session_state.gallery_limit]):
             labels = tuple(f"{class_name(d.name)} {d.confidence:.0%}" for d in dets)
-            caption = " · ".join([label(r), *([r.taken.strftime(t("date_format"))] if r.taken else []),
+            caption = " · ".join([label(r), *([r.taken.strftime(t("time_format"))] if r.taken else []),
                                   ", ".join(labels) or "–"])
             columns[i % GALLERY_COLUMNS].image(annotated_preview(str(r.preview), tuple(dets), labels),
                                                caption=caption, width="stretch")
