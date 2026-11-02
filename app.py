@@ -9,7 +9,7 @@ import hashlib
 import io
 import json
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import altair as alt
 import pandas as pd
@@ -388,6 +388,13 @@ def browser_time(taken: datetime) -> float:
 
 
 def period_text(start: datetime, end: datetime) -> str:
+    """The visible part of the time axis, from its first to its last whole second, as the capture times have whole
+    seconds: an image zoomed to by show_image() shows its time only."""
+    first, last = start.replace(microsecond=0) + timedelta(seconds=bool(start.microsecond)), end.replace(microsecond=0)
+    if first <= last:
+        start, end = first, last
+    if start == end:
+        return f"{start:{t('time_format')}}"
     if start.date() == end.date():
         return f"{start:{t('day_format')}} {start:%H:%M:%S}–{end:%H:%M:%S}"
     return f"{start:{t('time_format')}} – {end:{t('time_format')}}"
@@ -449,6 +456,27 @@ def switch_axis() -> None:
             state["zoom"] = [first - margin, last + margin]
 
 
+def show_image(result: ImageResult) -> None:
+    """Zoom the timeline to one image of the gallery, which then shows only this one: the image in the middle, with
+    half the distance to the closer neighbour on both sides. An image without capture time is shown on the order
+    axis."""
+    state = st.session_state.timeline
+    images = state["images"]
+    position = next(i for i, r in enumerate(images, 1) if r is result)
+    if state["axis"] == "time" and not result.taken:
+        st.session_state.timeline_axis = "order"
+        state["axis"] = "order"
+    if state["axis"] == "order":
+        state["zoom"] = [position - 0.5, position + 0.5]
+    else:
+        taken = browser_time(result.taken)
+        distances = [abs(browser_time(r.taken) - taken) for r in images if r.taken and r.taken != result.taken]
+        # images taken in the same second can't be told apart, see switch_axis()
+        margin = max(min(distances) / 2, 500) if distances else 30_000
+        state["zoom"] = [taken - margin, taken + margin]
+    new_timeline()
+
+
 def show_all() -> None:
     st.session_state.timeline["zoom"] = None
     new_timeline()
@@ -493,7 +521,7 @@ def show_timeline(results: list[ImageResult], label: Callable[[ImageResult], str
     classes = list(timeline_df.loc[timeline_df[CLASS_ID] != ALL_ROWS, CLASS_ID].value_counts().index)
     hidden = state["hidden"] & set(classes)
     ticked = ({ALL_ROWS} if not hidden else set()) | (set(classes) - hidden)
-    state.update(classes=classes, ticked=ticked, takens=[r.taken for r in readable])
+    state.update(classes=classes, ticked=ticked, takens=[r.taken for r in readable], images=readable)
     rows = pd.DataFrame([{klass: t("all_images"), CLASS_ID: ALL_ROWS},
                          *({klass: class_name(name), CLASS_ID: name} for name in classes)])
     rows[TICKED] = rows[CLASS_ID].isin(ticked)
@@ -505,8 +533,10 @@ def show_timeline(results: list[ImageResult], label: Callable[[ImageResult], str
         with st.container(horizontal=True, horizontal_alignment="right", vertical_alignment="center",
                           key="timeline_controls"):
             if timed:
+                # the default via the session state, which show_image() also sets
+                st.session_state.setdefault("timeline_axis", "time")
                 st.segmented_control(t("timeline_axis"), ["time", "order"], format_func=lambda a: t(f"axis_{a}"),
-                                     default="time", required=True, key="timeline_axis", on_change=switch_axis,
+                                     required=True, key="timeline_axis", on_change=switch_axis,
                                      label_visibility="collapsed")
             # The explanation is needed once, not each time, so it doesn't take room below the timeline.
             help_text = st.popover(t("help"), type="tertiary", icon=":material/help:")
@@ -543,7 +573,8 @@ def show_timeline(results: list[ImageResult], label: Callable[[ImageResult], str
         return results, hidden
     if axis == "order":
         inside = [(i, r) for i, r in enumerate(readable, 1) if zoom[0] <= i <= zoom[1]]
-        text = t("positions", len(results), positions=f"{inside[0][0]}–{inside[-1][0]}" if inside else "–",
+        positions = "–" if not inside else f"{inside[0][0]}–{inside[-1][0]}" if len(inside) > 1 else inside[0][0]
+        text = t("positions" if len(inside) != 1 else "position", len(results), positions=positions,
                  count=number(len(inside)), total=number(len(results)))
         in_range = [r for _, r in inside]
     else:
@@ -637,8 +668,13 @@ def show_results(results: list[ImageResult]) -> None:
             labels = tuple(f"{class_name(d.name)} {d.confidence:.0%}" for d in dets)
             caption = " · ".join([label(r), *([r.taken.strftime(t("time_format"))] if r.taken else []),
                                   ", ".join(labels) or "–"])
-            columns[i % GALLERY_COLUMNS].image(annotated_preview(str(r.preview), tuple(dets), labels),
-                                               caption=caption, width="stretch")
+            # the caption next to the button, so that it takes no extra line
+            with columns[i % GALLERY_COLUMNS].container(gap=None):
+                st.image(annotated_preview(str(r.preview), tuple(dets), labels), width="stretch")
+                with st.container(horizontal=True, wrap=False, vertical_alignment="center", gap="small"):
+                    st.button("", key=f"show_image_{i}", on_click=show_image, args=(r,), type="tertiary",
+                              icon=":material/center_focus_strong:", help=t("show_in_timeline"))
+                    st.caption(caption)
         if len(gallery) > st.session_state.gallery_limit:
             if st.button(t("more_images", count=number(len(gallery) - st.session_state.gallery_limit))):
                 st.session_state.gallery_limit += GALLERY_STEP

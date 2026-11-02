@@ -64,7 +64,7 @@ Next time, steps 3 and 4 are enough. After changes to the program, build the ima
 5. **Filter:** Gallery, statistics and Excel file follow the settings under **Filters**:
    - The **Confidence threshold** sets how sure the program has to be for a detection to count. Click on the colour scale above the timeline or drag on it to set it in steps of 5 %.
    - In the timeline, a click on the box or the name of a class ticks or unticks it. The top row **All** shows all images. A click on it ticks or unticks all classes at once, its box shows a dash while only some are ticked. **All classes** below the timeline ticks all again.
-   - Zoom into the timeline to look at a series: the results then only cover the visible part. Use Ctrl + mouse wheel or two fingers on the touchpad to zoom and drag to move. Double-click or use **Whole period** or **Show all** to see everything again.
+   - Zoom into the timeline to look at a series: the results then only cover the visible part. Use Ctrl + mouse wheel or two fingers on the touchpad to zoom and drag to move. The focus button left of an image's caption in the gallery zooms to that image, so that you can zoom out to the images around it. Double-click or use **Whole period** or **Show all** to see everything again.
 6. **Start over** in the sidebar discards all results, e.g. for a new SD card.
 7. **Quit** in the sidebar closes the program. Afterwards the browser window can be closed.
 
